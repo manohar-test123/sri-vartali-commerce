@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Sri Vartali design tokens — spec §10.
+ * Palette: deep wine (primary), antique gold (accent), warm ivory (surface).
+ * Premium serif headings, clean sans-serif UI. Restraint over ornament.
+ */
+@theme {
+  /* Deep wine */
+  --color-wine-50: #fbf4f7;
+  --color-wine-100: #f5e3eb;
+  --color-wine-200: #e8c2d2;
+  --color-wine-300: #d695b1;
+  --color-wine-400: #bd6089;
+  --color-wine-500: #9e3a67;
+  --color-wine-600: #82274f;
+  --color-wine-700: #661c3d;
+  --color-wine-800: #4e142e;
+  --color-wine-900: #3b0e22;
+  --color-wine-950: #260815;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Antique gold */
+  --color-gold-50: #fbf8ef;
+  --color-gold-100: #f6efda;
+  --color-gold-200: #ecddb2;
+  --color-gold-300: #dfc385;
+  --color-gold-400: #cda85c;
+  --color-gold-500: #b98e42;
+  --color-gold-600: #9c7233;
+  --color-gold-700: #7c5829;
+  --color-gold-800: #5f431f;
+  --color-gold-900: #402c15;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Warm ivory */
+  --color-ivory-50: #fdfbf7;
+  --color-ivory-100: #faf6ed;
+  --color-ivory-200: #f4edde;
+  --color-ivory-300: #eae0c9;
+  --color-ivory-400: #dacba6;
+  --color-ivory-500: #c4b085;
+
+  /* Typography: variables are injected by next/font in app/layout.tsx */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+
+  --color-surface: var(--color-ivory-100);
+  --color-ink: var(--color-wine-950);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+::selection {
+  background-color: var(--color-gold-200);
+  color: var(--color-wine-950);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

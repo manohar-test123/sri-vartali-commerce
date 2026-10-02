@@ -1,26 +1,33 @@
 # Database — Sri Vartali Fashion Commerce
 
-`schema.sql` is the v1 foundation (Phase 1). It is **idempotent** — safe to re-run.
+The v1 foundation lives in `supabase/migrations/20261002150000_init_schema.sql`
+(Phase 1). It is **idempotent** — safe to re-run.
 
 ## Applying
 
-Option A — **"Apply DB migration" workflow** (Actions tab → *Apply DB migration* →
-Run workflow): applies a chosen SQL file to the project database from a GitHub
-runner (the dev network blocks Postgres ports) and prints the verification
-block below. Needs the `SUPABASE_DB_PASSWORD` repo secret. This is the
-preferred path — manual dispatch after review, nothing automatic.
+Option A — **Supabase GitHub integration (primary)**: the project is connected
+to this repo (Supabase → Integrations → GitHub; deploy-to-production ON,
+production branch `main`). Merging a PR that adds
+`supabase/migrations/<timestamp>_*.sql` applies it to the production database
+automatically. Review happens on the PR; the owner's merge is the apply trigger.
 
-Option B — Supabase SQL editor (from any network): paste `schema.sql`, run.
+Option B — **"Apply DB migration" workflow** (fallback; Actions tab →
+*Apply DB migration* → Run workflow): applies a chosen SQL file to the project
+database from a GitHub runner (the dev network blocks Postgres ports) and
+prints the verification block below. Needs the `SUPABASE_DB_PASSWORD` repo
+secret. Manual dispatch after review, nothing automatic.
 
-Option C — Supabase CLI / psql directly, when on a network that allows
+Option C — Supabase SQL editor (from any network): paste the migration file, run.
+
+Option D — Supabase CLI / psql directly, when on a network that allows
 outbound 5432/6543 (pooler: `aws-0-ap-south-1.pooler.supabase.com`, session
-mode 5432, user `postgres.khuumibmulaggqddrrtih`):
+mode 5432, user `postgres.khuumibmulagqgdrrtih`):
 
 ```bash
-psql "postgresql://postgres.khuumibmulaggqddrrtih@aws-0-ap-south-1.pooler.supabase.com:5432/postgres" -f docs/db/schema.sql
+psql "postgresql://postgres.khuumibmulagqgdrrtih@aws-0-ap-south-1.pooler.supabase.com:5432/postgres" -f supabase/migrations/20261002150000_init_schema.sql
 ```
 
-> Project: `khuumibmulaggqddrrtih` (ap-south-1 / Mumbai, Free plan), org
+> Project: `khuumibmulagqgdrrtih` (ap-south-1 / Mumbai, Free plan), org
 > Stonebridge. Status updates are recorded in the operator `AUDITLOG.md`.
 
 ## What v1 encodes

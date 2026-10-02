@@ -53,7 +53,7 @@ function SetupNotice() {
       <p className="mt-3 text-sm leading-6 text-wine-900/70">
         Supabase is not configured. Fill <code className="rounded bg-gold-50 px-1">.env.local</code>{" "}
         from <code className="rounded bg-gold-50 px-1">.env.example</code> and apply{" "}
-        <code className="rounded bg-gold-50 px-1">docs/db/schema.sql</code> first — the auth gate
+        <code className="rounded bg-gold-50 px-1">supabase/migrations/20261002150000_init_schema.sql</code> first — the auth gate
         activates automatically once configured.
       </p>
     </div>

@@ -15,7 +15,7 @@ on:
       migration:
         description: "SQL file to apply (repo-relative path)"
         required: true
-        default: docs/db/schema.sql
+        default: supabase/migrations/20261002150000_init_schema.sql
 
 permissions:
   contents: read
@@ -32,7 +32,7 @@ jobs:
     env:
       PGHOST: aws-0-ap-south-1.pooler.supabase.com
       PGPORT: "5432"
-      PGUSER: postgres.khuumibmulaggqddrrtih
+      PGUSER: postgres.khuumibmulagqgdrrtih
       PGDATABASE: postgres
       PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       MIGRATION: ${{ inputs.migration }}
@@ -43,6 +43,23 @@ jobs:
         run: |
           test -n "$PGPASSWORD" || { echo "SUPABASE_DB_PASSWORD secret is not set"; exit 1; }
           test -f "$MIGRATION" || { echo "Migration file not found: $MIGRATION"; exit 1; }
+
+      # Pooler clusters are per-account; probe both ap-south-1 clusters and
+      # keep whichever one knows this tenant. URI params override PG* env,
+      # so the probe is explicit and the winner becomes PGHOST for the rest.
+      - name: Resolve pooler host
+        run: |
+          for host in aws-0-ap-south-1.pooler.supabase.com aws-1-ap-south-1.pooler.supabase.com; do
+            echo "probing $host …"
+            if psql "postgresql://$PGUSER@$host:5432/$PGDATABASE" -Atc "select 1" >/dev/null 2>&1; then
+              echo "POOLER_HOST=$host" >> "$GITHUB_ENV"
+              echo "authenticated against $host"
+              exit 0
+            else
+              echo "$host rejected this tenant/credentials"
+            fi
+          done
+          echo "No pooler host accepted the connection"; exit 1
 
       - name: Apply migration
         run: psql -v ON_ERROR_STOP=1 -f "$MIGRATION"

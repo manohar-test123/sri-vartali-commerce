@@ -1,14 +1,15 @@
 import Link from "next/link";
 
 import { getSession } from "@/lib/auth/session";
+import { dashboardStats } from "@/lib/orders/queries";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Client dashboard" };
 
 /**
- * Client dashboard home (spec §8/§38). Phase 2 landed the product CMS at
- * /client/products; orders/payments/shipping arrive with Phase 3/6.
+ * Client dashboard home (spec §8/§38): today's counters, action-required
+ * orders, and links into the CMS and order list.
  */
 export default async function ClientDashboardPage() {
   const session = await getSession();
@@ -21,6 +22,7 @@ export default async function ClientDashboardPage() {
     );
   }
 
+  const stats = await dashboardStats();
   const who =
     session.status === "authenticated"
       ? `${session.user.email ?? session.user.id} · ${session.user.role}`
@@ -31,7 +33,60 @@ export default async function ClientDashboardPage() {
       <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Client area</p>
       <h1 className="mt-2 font-serif text-3xl text-wine-900">Client dashboard</h1>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <section aria-labelledby="today-heading" className="mt-8">
+        <h2 id="today-heading" className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+          Today
+        </h2>
+        <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <Stat label="Orders" value={stats.todayOrders} />
+          <Stat label="Pending payment" value={stats.pendingPayment} />
+          <Stat label="Paid / ready to pack" value={stats.paidReadyToPack} />
+          <Stat label="Shipped" value={stats.shipped} />
+          <Stat label="Low stock" value={stats.lowStock} />
+        </dl>
+      </section>
+
+      <section aria-labelledby="action-heading" className="mt-8">
+        <h2 id="action-heading" className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+          Action required
+        </h2>
+        {stats.actionRequired.length === 0 ? (
+          <p className="mt-3 rounded-xl border border-dashed border-wine-900/25 px-4 py-6 text-center text-sm text-wine-900/50">
+            Nothing needs you right now.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {stats.actionRequired.map((row) => (
+              <li key={`${row.id}-${row.reason}`}>
+                <Link
+                  href={`/client/orders/${row.id}`}
+                  className="flex items-center justify-between rounded-xl border border-wine-900/15 bg-white px-4 py-3 text-sm transition-colors hover:border-gold-400"
+                >
+                  <span className="font-medium text-wine-900">{row.order_number}</span>
+                  <span className="text-wine-900/60">{row.reason}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/client/orders"
+          className="group rounded-lg border border-wine-900/20 bg-white p-6 transition-colors hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
+        >
+          <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Orders</p>
+          <h2 className="mt-1 font-serif text-xl text-wine-900">Order dashboard</h2>
+          <p className="mt-2 text-sm leading-6 text-wine-900/70">
+            Every placed order with payment and fulfilment status, stock
+            reservations, cancel / packing actions and status history.
+          </p>
+          <span className="mt-4 inline-block text-sm font-medium text-wine-800 underline decoration-gold-400 underline-offset-4 group-hover:text-wine-700">
+            Open orders →
+          </span>
+        </Link>
+
         <Link
           href="/client/products"
           className="group rounded-lg border border-wine-900/20 bg-white p-6 transition-colors hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
@@ -46,19 +101,19 @@ export default async function ClientDashboardPage() {
             Open products →
           </span>
         </Link>
-
-        <div className="rounded-lg border border-dashed border-wine-900/25 p-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Phase 3 / 6</p>
-          <h2 className="mt-1 font-serif text-xl text-wine-900/70">Orders, payments &amp; shipping</h2>
-          <p className="mt-2 text-sm leading-6 text-wine-900/50">
-            Order management, WhatsApp payment verification and shipping tools
-            arrive with Phase 3 and Phase 6.
-          </p>
-        </div>
       </div>
 
       <p className="mt-8 text-xs text-wine-900/50">Signed in: {who}</p>
     </DashboardShell>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-wine-900/15 bg-white px-4 py-3">
+      <dt className="text-[11px] uppercase tracking-[0.1em] text-wine-900/50">{label}</dt>
+      <dd className="mt-1 font-serif text-2xl text-wine-900">{value}</dd>
+    </div>
   );
 }
 

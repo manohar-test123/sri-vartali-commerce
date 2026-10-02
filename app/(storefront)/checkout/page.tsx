@@ -8,8 +8,8 @@ import { getCheckoutView } from "@/lib/cart/queries";
 /**
  * /checkout (spec §20–§22): contact + address with §21 PIN validation,
  * order summary, and a server-side review that locks verified totals.
- * Order creation itself (§22 steps 10–16) is Phase 6; this page is the
- * verified hand-off point.
+ * "Continue to WhatsApp" then places the order (§22 steps 10–16, Phase 6)
+ * and hands off to the prefilled §27 WhatsApp message.
  */
 
 export const dynamic = "force-dynamic";

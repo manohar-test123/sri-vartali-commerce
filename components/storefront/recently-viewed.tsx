@@ -1,34 +1,38 @@
 "use client";
 
 /**
- * §13 "Recently viewed": records the current product on mount and renders
- * the strip from localStorage. Renders nothing until entries exist (and
- * nothing at all during SSR) so pages stay clean for first-time visitors.
+ * §13 "Recently viewed": records the current product once on mount and
+ * renders the strip from the localStorage external store. Renders nothing
+ * until entries exist, so pages stay clean for first-time visitors.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 
 import { formatPaise } from "@/lib/catalog/money";
 import {
-  getRecentlyViewed,
+  EMPTY_RECENT,
+  getRecentlyViewedSnapshot,
   recordRecentlyViewed,
+  subscribeRecentlyViewed,
   type RecentEntry,
 } from "@/lib/storefront/browser-storage";
 
-export function RecentlyViewed({
-  current,
-}: {
-  current: RecentEntry;
-}) {
-  const [entries, setEntries] = useState<RecentEntry[] | null>(null);
+export function RecentlyViewed({ current }: { current: RecentEntry }) {
+  const all = useSyncExternalStore(
+    subscribeRecentlyViewed,
+    getRecentlyViewedSnapshot,
+    () => EMPTY_RECENT,
+  );
 
+  // Pure side effect: record the visit; the store notification re-renders.
   useEffect(() => {
     recordRecentlyViewed(current);
-    setEntries(getRecentlyViewed(current.slug).slice(0, 4));
   }, [current]);
 
-  if (entries === null || entries.length === 0) return null;
+  const entries = all.filter((e) => e.slug !== current.slug).slice(0, 4);
+  if (entries.length === 0) return null;
 
   return (
     <section aria-label="Recently viewed" className="border-t border-wine-900/10 pt-6">

@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Wishlist heart (§12): client-side membership in localStorage via
- * lib/storefront/browser-storage. Renders the same button shape on cards
- * and the product page; hydration-safe (state settles after mount).
+ * Wishlist heart (§12): membership in the localStorage wishlist, read as an
+ * external store so the pressed state is always in sync — across cards,
+ * pages and tabs — without state-mirroring effects.
  */
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import {
-  inWishlist,
-  onWishlistChange,
+  inWishlistSnapshot,
+  subscribeWishlist,
   toggleWishlist,
   type WishlistEntry,
 } from "@/lib/storefront/browser-storage";
@@ -22,17 +22,15 @@ export function WishlistToggle({
   snapshot: Omit<WishlistEntry, "addedAt">;
   size?: "sm" | "lg";
 }) {
-  // undefined = pre-mount (uncontrolled render); settles on first effect.
-  const [active, setActive] = useState<boolean | null>(null);
+  const pressed = useSyncExternalStore(
+    subscribeWishlist,
+    () => inWishlistSnapshot(snapshot.id),
+    () => false,
+  );
 
-  useEffect(() => {
-    const sync = () => setActive(inWishlist(snapshot.id));
-    sync();
-    return onWishlistChange(sync);
-  }, [snapshot.id]);
-
-  const pressed = active === true;
-  const label = pressed ? `Remove ${snapshot.name} from wishlist` : `Save ${snapshot.name} to wishlist`;
+  const label = pressed
+    ? `Remove ${snapshot.name} from wishlist`
+    : `Save ${snapshot.name} to wishlist`;
   const dim = size === "lg" ? "h-11 w-11" : "h-8 w-8";
   const glyph = size === "lg" ? "text-lg" : "text-sm";
 
@@ -43,7 +41,7 @@ export function WishlistToggle({
       aria-label={label}
       title={label}
       onClick={() => {
-        setActive(toggleWishlist(snapshot));
+        toggleWishlist(snapshot);
       }}
       className={`${dim} flex items-center justify-center rounded-full border backdrop-blur-sm transition-colors ${
         pressed

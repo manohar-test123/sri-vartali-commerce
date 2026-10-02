@@ -2,29 +2,27 @@
 
 /**
  * /wishlist (§7): the guest wishlist from localStorage (see
- * lib/storefront/browser-storage for why it is browser-local in v1).
- * Client page — content appears after mount; SSR renders the shell.
+ * lib/storefront/browser-storage for why it is browser-local in v1),
+ * rendered as an external-store subscription.
  */
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 
 import { formatPaise } from "@/lib/catalog/money";
 import {
-  getWishlist,
-  onWishlistChange,
+  EMPTY_WISHLIST,
+  getWishlistSnapshot,
   removeFromWishlist,
-  type WishlistEntry,
+  subscribeWishlist,
 } from "@/lib/storefront/browser-storage";
 
 export default function WishlistPage() {
-  const [entries, setEntries] = useState<WishlistEntry[] | null>(null);
-
-  useEffect(() => {
-    const sync = () => setEntries(getWishlist());
-    sync();
-    return onWishlistChange(sync);
-  }, []);
+  const entries = useSyncExternalStore(
+    subscribeWishlist,
+    getWishlistSnapshot,
+    () => EMPTY_WISHLIST,
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
@@ -39,7 +37,7 @@ export default function WishlistPage() {
         </p>
       </header>
 
-      {entries === null ? null : entries.length === 0 ? (
+      {entries.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-wine-900/20 px-6 py-16 text-center">
           <p className="font-serif text-xl text-wine-900">Nothing saved yet</p>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-wine-900/60">
@@ -55,7 +53,7 @@ export default function WishlistPage() {
       ) : (
         <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
           {entries.map((e) => (
-            <li key={e.id} className="group relative flex flex-col">
+            <li key={e.id} className="relative flex flex-col">
               <Link
                 href={`/product/${e.slug}`}
                 className="relative block aspect-[3/4] overflow-hidden rounded-xl bg-wine-900/5"

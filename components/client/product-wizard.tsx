@@ -246,7 +246,6 @@ export function ProductWizard({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, pricePaise, performSave]);
 
   function saveNow() {

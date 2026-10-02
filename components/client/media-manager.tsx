@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -16,6 +16,10 @@ import type { ProductMediaRow } from "@/lib/catalog/types";
  * primary selection, alt text, delete, retry. Uploads go browser →
  * Cloudinary with a server-signed payload (rule 13 analog); when
  * Cloudinary isn't configured, images can be added by URL.
+ *
+ * The card grid is derived straight from the `media` prop (server truth):
+ * every mutation persists then router.refresh()es, so images appear
+ * without a manual reload and nothing can go stale in local state.
  */
 
 type Upload = { id: number; file: File; progress: number; error?: string };
@@ -35,24 +39,12 @@ export function MediaManager({
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
-  const [order, setOrder] = useState<ProductMediaRow[]>(media);
-  const [primaryId, setPrimaryId] = useState<string | null>(
-    media.find((m) => m.is_primary)?.id ?? media[0]?.id ?? null,
-  );
   const dragIndex = useRef<number | null>(null);
   const [urlValue, setUrlValue] = useState("");
 
-  // The component doesn't remount on router.refresh(), so the server's
-  // media rows must be mirrored into local state — otherwise an image
-  // added by URL/upload only appears after a manual page reload.
-  useEffect(() => {
-    setOrder(media);
-    setPrimaryId(media.find((m) => m.is_primary)?.id ?? media[0]?.id ?? null);
-  }, [media]);
+  const primaryId = media.find((m) => m.is_primary)?.id ?? media[0]?.id ?? null;
 
   async function persistOrder(nextOrder: ProductMediaRow[], nextPrimary: string | null) {
-    setOrder(nextOrder);
-    setPrimaryId(nextPrimary);
     const result = await saveMediaOrder(
       productId,
       nextOrder.map((m) => m.id),
@@ -66,7 +58,7 @@ export function MediaManager({
     const from = dragIndex.current;
     dragIndex.current = null;
     if (from === null || from === index) return;
-    const next = [...order];
+    const next = [...media];
     const [moved] = next.splice(from, 1);
     next.splice(index, 0, moved);
     void persistOrder(next, primaryId ?? next[0]?.id ?? null);
@@ -180,14 +172,11 @@ export function MediaManager({
   async function remove(mediaId: string) {
     const result = await deleteMedia(productId, mediaId);
     if (!result.ok) {
-      setNotice(result.error);
-      return;
-    }
-    const next = order.filter((m) => m.id !== mediaId);
-    setOrder(next);
-    setPrimaryId(next.find((m) => m.is_primary)?.id ?? next[0]?.id ?? null);
-    router.refresh();
+    setNotice(result.error);
+    return;
   }
+  router.refresh();
+}
 
   return (
     <div>
@@ -196,7 +185,7 @@ export function MediaManager({
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        {order.map((m, index) => (
+        {media.map((m, index) => (
           <div
             key={m.id}
             draggable
@@ -234,7 +223,7 @@ export function MediaManager({
                 <button
                   type="button"
                   className="text-wine-900/70 hover:underline"
-                  onClick={() => persistOrder(order, m.id)}
+                  onClick={() => persistOrder(media, m.id)}
                 >
                   make primary
                 </button>

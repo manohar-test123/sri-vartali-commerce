@@ -9,7 +9,14 @@ import Link from "next/link";
 import { WishlistBadge } from "@/components/storefront/wishlist-badge";
 import type { CategoryNode } from "@/lib/storefront/search";
 
-export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
+export function SiteHeader({
+  categories,
+  cartCount = 0,
+}: {
+  categories: CategoryNode[];
+  /** Total units in the server-side cart; fetched by the layout. */
+  cartCount?: number;
+}) {
   const top = categories.filter((c) => c.parentId === null);
 
   return (
@@ -50,6 +57,18 @@ export function SiteHeader({ categories }: { categories: CategoryNode[] }) {
             className="text-wine-900/70 transition-colors hover:text-wine-900 sm:hidden"
           >
             <span aria-hidden>🔍</span>
+          </Link>
+          <Link
+            href="/cart"
+            className="relative flex items-center gap-1.5 text-wine-900/70 transition-colors hover:text-wine-900"
+          >
+            <span aria-hidden>🛍</span>
+            <span className="hidden sm:inline">Cart</span>
+            {cartCount > 0 ? (
+              <span className="rounded-full bg-wine-900 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-ivory-50">
+                {cartCount}
+              </span>
+            ) : null}
           </Link>
           <WishlistBadge />
         </nav>

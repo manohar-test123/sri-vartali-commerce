@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AddToCart } from "@/components/storefront/add-to-cart";
 import { ProductCard, cardDataFromSummary } from "@/components/storefront/product-card";
 import { PinChecker } from "@/components/storefront/pin-checker";
 import { ProductGallery } from "@/components/storefront/product-gallery";
@@ -17,8 +18,8 @@ import {
 
 /**
  * /product/[slug] (§13). Anon-visible rows only — RLS hides drafts, so a
- * missing/slug-typo renders 404. Add to Cart / Buy Now arrive with Phase 5;
- * until then the heart + honest stock/delivery info carry the page.
+ * missing/slug-typo renders 404. Variant pick, Add to Cart and Buy Now
+ * (§18/§19) live in AddToCart; totals are always server-verified (§22).
  */
 export const dynamic = "force-dynamic";
 
@@ -221,39 +222,24 @@ export default async function ProductPage({
           </p>
 
           {bundle.variants.length > 1 ? (
-            <section aria-label="Variants" className="mt-5">
-              <h2 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
-                Variants
-              </h2>
-              <ul className="mt-2 divide-y divide-wine-900/10 rounded-xl border border-wine-900/10 bg-white/60">
-                {bundle.variants.map((v) => (
-                  <li
-                    key={v.id}
-                    className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-wine-900">
-                        {v.name || v.sku}
-                      </span>
-                      <span className="block text-[11px] text-wine-900/40">{v.sku}</span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-wine-900">{formatPaise(v.pricePaise)}</span>
-                      <span
-                        className={`block text-[11px] ${
-                          v.available === 0 ? "text-wine-900/40" : "text-wine-900/60"
-                        }`}
-                      >
-                        {v.available === 0 ? "Sold out" : `${v.available} available`}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <p className="mt-5 text-xs text-wine-900/50">
+              Multiple options available — pick yours below the price.
+            </p>
           ) : null}
 
-          <div className="mt-6 flex items-center gap-3">
+          {bundle.variants.length > 0 ? (
+            <AddToCart
+              variants={bundle.variants.map((v) => ({
+                id: v.id,
+                sku: v.sku,
+                name: v.name,
+                priceLabel: formatPaise(v.pricePaise),
+                available: v.available,
+              }))}
+            />
+          ) : null}
+
+          <div className="mt-5 flex items-center gap-3">
             <WishlistToggle
               size="lg"
               snapshot={{
@@ -268,9 +254,9 @@ export default async function ProductPage({
               }}
             />
             <p className="text-xs leading-5 text-wine-900/50">
-              Save to wishlist — ordering opens with checkout.
+              Save to wishlist, or order straight from here —
               <br />
-              Every listing names its fabric and measurements.
+              every listing names its fabric and measurements.
             </p>
           </div>
 

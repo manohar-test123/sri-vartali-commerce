@@ -18,6 +18,8 @@ import {
 import { variantLabel } from "@/lib/orders/snapshot";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/db/admin";
+import { absoluteOrderUrl } from "@/lib/orders/url";
+import { PlacedWhatsAppAuto } from "@/components/storefront/placed-whatsapp";
 
 /**
  * Public order page (spec §7 /order/[orderNumber], §2). Reached from the
@@ -34,7 +36,10 @@ export const dynamic = "force-dynamic";
 
 const ORDER_NUMBER_PATTERN = /^SVS-ORD-\d{8}-\d+$/;
 
-type PageProps = { params: Promise<{ orderNumber: string }> };
+type PageProps = {
+  params: Promise<{ orderNumber: string }>;
+  searchParams: Promise<{ placed?: string }>;
+};
 
 export async function generateMetadata({
   params,
@@ -52,8 +57,9 @@ function maskPhone(phone: string): string {
     : "•••";
 }
 
-export default async function OrderPage({ params }: PageProps) {
+export default async function OrderPage({ params, searchParams }: PageProps) {
   const { orderNumber } = await params;
+  const { placed: justPlaced } = await searchParams;
   if (!ORDER_NUMBER_PATTERN.test(orderNumber)) notFound();
 
   const found = await getOrderByNumber(orderNumber);
@@ -86,7 +92,7 @@ export default async function OrderPage({ params }: PageProps) {
           customerName: order.customer_name,
           phone: order.phone,
           address: order.shipping_address_snapshot,
-          orderUrl: `${env.siteUrl}/order/${order.order_number}`,
+          orderUrl: await absoluteOrderUrl(order.order_number),
         }),
       )
     : null;
@@ -120,6 +126,20 @@ export default async function OrderPage({ params }: PageProps) {
           className={ORDER_STATUS_CLASSES[order.order_status]}
         />
       </div>
+
+      {justPlaced === "1" && order.order_status !== "CANCELLED" ? (
+        <section className="mt-6 rounded-2xl border border-emerald-600/30 bg-emerald-50/60 px-5 py-4">
+          <p className="font-serif text-xl text-wine-900">Order placed ✓</p>
+          <p className="mt-1 text-sm leading-6 text-wine-900/70">
+            {whatsappUrl
+              ? "Opening WhatsApp with your order details… if nothing happens, tap below. The message is prefilled — just press send."
+              : "Your items are reserved for 30 minutes while payment is confirmed."}
+          </p>
+          {whatsappUrl ? (
+            <PlacedWhatsAppAuto whatsappUrl={whatsappUrl} />
+          ) : null}
+        </section>
+      ) : null}
 
       {order.order_status === "CANCELLED" ? (
         <p className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

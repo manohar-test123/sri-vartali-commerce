@@ -9,7 +9,7 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { abandonBuyNow } from "@/lib/cart/actions";
 import { reviewCheckout } from "@/lib/checkout/actions";
@@ -72,21 +72,6 @@ export function CheckoutForm({
   const [verified, setVerified] = useState<VerifiedCheckout | null>(null);
   const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState<string | null>(null);
-  const [placed, setPlaced] = useState<
-    Extract<PlaceOrderResult, { status: "placed" }> | null
-  >(null);
-
-  // §2: order first, then WhatsApp opens. Top-level navigation to the
-  // wa.me link (not a popup) from the placement gesture's aftermath; the
-  // buttons below stay as the always-works fallback.
-  useEffect(() => {
-    if (placed?.whatsappUrl) {
-      const timer = window.setTimeout(() => {
-        window.location.assign(placed.whatsappUrl!);
-      }, 900);
-      return () => window.clearTimeout(timer);
-    }
-  }, [placed]);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -207,55 +192,9 @@ export function CheckoutForm({
         router.refresh();
         return;
       }
-      setPlaced(result);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // "placed": the action redirected to /order/<n>?placed=1 — the
+      // confirmation page takes over from here.
     });
-  }
-
-  if (placed) {
-    return (
-      <div className="mx-auto max-w-xl">
-        <section
-          aria-labelledby="placed-heading"
-          className="rounded-2xl border border-emerald-600/30 bg-emerald-50/60 p-8 text-center"
-        >
-          <h2 id="placed-heading" className="font-serif text-3xl text-wine-900">
-            Order placed ✓
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-wine-900/70">
-            Your order{" "}
-            <strong className="font-semibold">{placed.orderNumber}</strong> is
-            confirmed and its items are reserved for you.
-          </p>
-          {placed.whatsappUrl ? (
-            <>
-              <p className="mt-2 text-sm text-wine-900/60">
-                Opening WhatsApp to send the order… if nothing happens, tap
-                below. The message is prefilled — just press send.
-              </p>
-              <a
-                href={placed.whatsappUrl}
-                className="mt-6 inline-block rounded-full bg-[#25D366] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-              >
-                Open WhatsApp
-              </a>
-            </>
-          ) : (
-            <p className="mt-2 text-sm text-wine-900/60">
-              Send the order details on WhatsApp from your order page.
-            </p>
-          )}
-          <div>
-            <a
-              href={placed.orderUrl}
-              className="mt-4 inline-block text-sm font-medium text-wine-800 underline decoration-gold-400 underline-offset-4"
-            >
-              View your order →
-            </a>
-          </div>
-        </section>
-      </div>
-    );
   }
 
   return (

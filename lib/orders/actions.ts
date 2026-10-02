@@ -15,9 +15,8 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-import { env } from "@/lib/env";
 import { getSession } from "@/lib/auth/session";
 import {
   normalizeIndianPhone,
@@ -35,8 +34,6 @@ import {
   type FulfilmentStatus,
 } from "@/lib/orders/status";
 import { getOrderByNumber } from "@/lib/orders/queries";
-import { variantLabel } from "@/lib/orders/snapshot";
-import { buildOrderWhatsAppMessage, buildWhatsAppUrl } from "@/lib/orders/whatsapp";
 import type { QuoteIssue } from "@/lib/checkout/quote";
 
 export type PlaceOrderResult =
@@ -44,38 +41,11 @@ export type PlaceOrderResult =
   | { status: "issues"; issues: QuoteIssue[] }
   | { status: "empty" }
   | { status: "error"; error: string }
-  | {
-      status: "placed";
-      orderNumber: string;
-      orderUrl: string;
-      whatsappUrl: string | null;
-    };
+  | { status: "placed"; orderNumber: string };
 
 function field(data: FormData, name: string): string {
   const value = data.get(name);
   return typeof value === "string" ? value : "";
-}
-
-/** Absolute /order/<number> URL from the serving host (§27 Order Link). */
-async function orderUrlFor(orderNumber: string): Promise<string> {
-  const headerList = await headers();
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  if (host) {
-    const proto = headerList.get("x-forwarded-proto") ?? "http";
-    return `${proto}://${host}/order/${orderNumber}`;
-  }
-  return `${env.siteUrl}/order/${orderNumber}`;
-}
-
-/** Store WhatsApp number: DB setting wins, env var is the fallback. */
-async function storeWhatsAppNumber(): Promise<string | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("store_settings")
-    .select("whatsapp_store_number")
-    .eq("id", 1)
-    .maybeSingle();
-  return data?.whatsapp_store_number ?? env.whatsapp.storeNumber ?? null;
 }
 
 /** §22 steps 10-16 continue from the verified checkout — cart cleared on
@@ -172,39 +142,18 @@ export async function placeOrderAction(
     }
   }
 
-  // Message from the PERSISTED order, not the pre-place quote (§27/§43).
+  // Read-back: the persisted order must exist before we navigate (evidence
+  // over claims — a missing row here means the RPC lied about success).
   const persisted = await getOrderByNumber(placed.orderNumber);
-  const orderUrl = await orderUrlFor(placed.orderNumber);
-  let whatsappUrl: string | null = null;
-  if (persisted) {
-    const storeNumber = await storeWhatsAppNumber();
-    whatsappUrl = buildWhatsAppUrl(
-      storeNumber,
-      buildOrderWhatsAppMessage({
-        orderNumber: persisted.order.order_number,
-        lines: persisted.items.map((i) => ({
-          productName: i.product_name_snapshot,
-          productCode: i.product_code_snapshot,
-          variantName: variantLabel(i.selected_attributes),
-          quantity: i.quantity,
-          lineTotalPaise: i.line_total_paise,
-        })),
-        totalPaise: persisted.order.total_paise,
-        customerName: persisted.order.customer_name,
-        phone: persisted.order.phone,
-        address: persisted.order.shipping_address_snapshot,
-        orderUrl,
-      }),
-    );
+  if (!persisted) {
+    throw new Error(`place_order reported success but order not found: ${placed.orderNumber}`);
   }
 
   revalidatePath("/cart");
-  return {
-    status: "placed",
-    orderNumber: placed.orderNumber,
-    orderUrl,
-    whatsappUrl,
-  };
+  // §2 flow: order exists first, then the customer lands on /order/<n>
+  // with the §27 WhatsApp hand-off. Server-driven navigation avoids the
+  // checkout page's empty-cart redirect racing a client-side panel.
+  redirect(`/order/${placed.orderNumber}?placed=1`);
 }
 
 // ---------------------------------------------------------------------------

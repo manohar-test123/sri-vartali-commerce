@@ -1,0 +1,86 @@
+# Database — Sri Vartali Fashion Commerce
+
+`schema.sql` is the v1 foundation (Phase 1). It is **idempotent** — safe to re-run.
+
+## Applying
+
+Option A — Supabase SQL editor (fastest): paste `schema.sql`, run.
+
+Option B — Supabase CLI:
+
+```bash
+cp docs/db/schema.sql supabase/migrations/0001_init.sql
+supabase db push
+```
+
+> Status: **not yet applied** — needs a Supabase project. The owner creates it,
+> fills `.env.local`, and applies this file. Nothing in the app works against
+> real data until then (pages degrade to setup notices).
+
+## What v1 encodes
+
+- **Category-generic catalog** (rule 1, 24): `categories.attribute_schema`
+  (jsonb) defines per-category fields; `products.attributes` (jsonb) stores
+  values. Sarees/Dresses/Kurtis seeded with the spec §4 fields as data —
+  adding "Lehengas" attributes later is a data edit, not a migration.
+- **IDs** (rules 2-4): UUID PKs; `SVS-P-000001` product codes and
+  `SVS-ORD-YYYYMMDD-NNNNN` order numbers from sequences via
+  `next_product_code()` / `next_order_number()`.
+- **Money** (rule 7): integer paise columns only; `orders` has a CHECK that
+  `total = subtotal − discount + shipping`; `order_items` CHECKs
+  `line_total = unit_price × quantity`.
+- **Snapshots** (rules 5-6, 19): `order_items` snapshot columns;
+  `orders.shipping_address_snapshot`; `on delete restrict` from order items to
+  products/variants so history cannot be orphaned (archive instead of delete —
+  §14).
+- **Statuses** (§25): the three enums + automatic `order_status_history` rows
+  via trigger on any status change.
+- **RLS everywhere** (rule 21), role-aware via `profiles.role`:
+  - public/anon: read published products, their media/variants/stock, active
+    categories/collections, approved reviews, store settings (no secrets).
+  - customers: read/update only their own carts-adjacent data, addresses,
+    wishlists, orders (matched through `customers.user_id`).
+  - client roles: catalog + orders + payments + shipments + moderation.
+  - `CLIENT_OWNER`/`SUPER_ADMIN` alone may change payment settings (§30).
+  - `SUPER_ADMIN` alone: webhook events, audit logs, WhatsApp consents,
+    and **granting roles** (`guard_profile_role` trigger).
+  - carts/cart_items: RLS on, **zero policies** — reachable only by the
+    server's admin client, since checkout is server-authoritative (§22).
+- **Signups** start as `CUSTOMER` (trigger on `auth.users`); elevation is a
+  deliberate super-admin action.
+
+## Deliberate decisions (documented for review)
+
+- `whatsapp_messages` adds a `direction` column beyond spec §43 so inbound
+  automation replies are distinguishable from outbound sends.
+- Order numbers use one global sequence (no daily reset) — uniqueness stays
+  provable; the date prefix remains human-readable.
+- Order/payment creation happens server-side (no insert policies); RLS then
+  governs reads and business updates.
+- `inventory` exposes quantity of *published* products publicly — needed for
+  sold-out/low-stock states (§12); quantities are not treated as sensitive.
+
+## Deferred (later phases)
+
+- PIN-code reference data + API (§21) — Phase 5
+- reservation-release job for `reservation_expires_at` (§26) — Phase 6
+- `orders.order_status` transitions beyond trigger history (guards per
+  transition) — Phase 6, in app layer with audit
+- full-text/trigram search indexes — Phase 4, when the shop UI lands
+- Realtime is a Supabase config (no schema impact; §39)
+
+## Post-apply verification
+
+```sql
+-- 1. RLS on every table
+select relname, relrowsecurity from pg_class
+join pg_namespace n on n.oid = relnamespace
+where n.nspname = 'public' and relkind = 'r'
+order by relname;  -- expect relrowsecurity = true for all
+
+-- 2. singleton settings seeded
+select count(*) = 1 as settings_ok from store_settings;
+
+-- 3. sequences reserved for code generation
+select nextval('product_code_seq');  -- expect 2 (seed consumed 1)
+```

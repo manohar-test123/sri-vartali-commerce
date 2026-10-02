@@ -17,7 +17,7 @@ export default async function AdminPage() {
         <h1 className="font-serif text-3xl text-wine-900">Super admin</h1>
         <p className="mt-3 max-w-lg text-sm leading-6 text-wine-900/70">
           Supabase is not configured. See <code className="rounded bg-gold-50 px-1">.env.example</code>{" "}
-          and <code className="rounded bg-gold-50 px-1">docs/db/schema.sql</code> — the gate activates
+          and <code className="rounded bg-gold-50 px-1">supabase/migrations/20261002150000_init_schema.sql</code> — the gate activates
           once configured.
         </p>
       </Shell>

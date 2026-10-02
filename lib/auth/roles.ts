@@ -6,7 +6,7 @@
  * CLIENT_STAFF    business operations, minus payment/UPI settings (spec §30)
  * SUPER_ADMIN     technical operations, in addition to client powers
  *
- * These must stay in sync with the `app_role` enum in docs/db/schema.sql.
+ * These must stay in sync with the `app_role` enum in supabase/migrations/20261002150000_init_schema.sql.
  */
 export const APP_ROLES = [
   "CUSTOMER",

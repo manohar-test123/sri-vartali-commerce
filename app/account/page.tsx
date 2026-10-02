@@ -18,7 +18,7 @@ export default async function AccountPage() {
           Supabase is not configured yet. Set <code className="rounded bg-gold-50 px-1">NEXT_PUBLIC_SUPABASE_URL</code>{" "}
           and <code className="rounded bg-gold-50 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in{" "}
           <code className="rounded bg-gold-50 px-1">.env.local</code>, then apply{" "}
-          <code className="rounded bg-gold-50 px-1">docs/db/schema.sql</code>.
+          <code className="rounded bg-gold-50 px-1">supabase/migrations/20261002150000_init_schema.sql</code>.
         </p>
       </div>
     );

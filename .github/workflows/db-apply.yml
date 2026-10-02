@@ -15,7 +15,7 @@ on:
       migration:
         description: "SQL file to apply (repo-relative path)"
         required: true
-        default: docs/db/schema.sql
+        default: supabase/migrations/20261002150000_init_schema.sql
 
 permissions:
   contents: read

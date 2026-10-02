@@ -64,7 +64,7 @@ Scripts: `dev` · `build` · `start` · `lint` · `typecheck` (CI runs typecheck
 lint → build on every PR and on main).
 
 **First-time setup**: create a Supabase project, fill `.env.local`, then apply
-[`docs/db/schema.sql`](./docs/db/schema.sql) (SQL editor or `supabase db push`).
+[`supabase/migrations/20261002150000_init_schema.sql`](./supabase/migrations/20261002150000_init_schema.sql) (SQL editor or `supabase db push`).
 Until then, pages degrade to setup notices instead of crashing.
 
 

@@ -9,7 +9,8 @@ export default function LoginPage() {
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-24">
       <h1 className="font-serif text-3xl text-wine-900">Sign in</h1>
       <p className="mt-2 text-sm leading-6 text-wine-900/70">
-        We&apos;ll email you a one-time sign-in link. No password needed.
+        We&apos;ll email you a one-time sign-in link — or use a password if
+        your account has one.
       </p>
 
       <Suspense>

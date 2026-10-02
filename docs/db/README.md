@@ -4,18 +4,24 @@
 
 ## Applying
 
-Option A — Supabase SQL editor (fastest): paste `schema.sql`, run.
+Option A — **"Apply DB migration" workflow** (Actions tab → *Apply DB migration* →
+Run workflow): applies a chosen SQL file to the project database from a GitHub
+runner (the dev network blocks Postgres ports) and prints the verification
+block below. Needs the `SUPABASE_DB_PASSWORD` repo secret. This is the
+preferred path — manual dispatch after review, nothing automatic.
 
-Option B — Supabase CLI:
+Option B — Supabase SQL editor (from any network): paste `schema.sql`, run.
+
+Option C — Supabase CLI / psql directly, when on a network that allows
+outbound 5432/6543 (pooler: `aws-0-ap-south-1.pooler.supabase.com`, session
+mode 5432, user `postgres.khuumibmulaggqddrrtih`):
 
 ```bash
-cp docs/db/schema.sql supabase/migrations/0001_init.sql
-supabase db push
+psql "postgresql://postgres.khuumibmulaggqddrrtih@aws-0-ap-south-1.pooler.supabase.com:5432/postgres" -f docs/db/schema.sql
 ```
 
-> Status: **not yet applied** — needs a Supabase project. The owner creates it,
-> fills `.env.local`, and applies this file. Nothing in the app works against
-> real data until then (pages degrade to setup notices).
+> Project: `khuumibmulaggqddrrtih` (ap-south-1 / Mumbai, Free plan), org
+> Stonebridge. Status updates are recorded in the operator `AUDITLOG.md`.
 
 ## What v1 encodes
 
@@ -81,6 +87,6 @@ order by relname;  -- expect relrowsecurity = true for all
 -- 2. singleton settings seeded
 select count(*) = 1 as settings_ok from store_settings;
 
--- 3. sequences reserved for code generation
-select nextval('product_code_seq');  -- expect 2 (seed consumed 1)
+-- 3. ID generators wired to sequences (each call consumes the next number)
+select public.next_product_code();  -- expect SVS-P-000001 on a fresh database
 ```

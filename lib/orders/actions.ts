@@ -248,10 +248,13 @@ export async function advanceFulfilmentAction(
   const admin = createAdminClient();
   const { data: order } = await admin
     .from("orders")
-    .select("id, order_number, fulfilment_status")
+    .select("id, order_number, order_status, fulfilment_status")
     .eq("id", orderId)
     .maybeSingle();
   if (!order) return { ok: false, error: "Order not found." };
+  if (order.order_status === "CANCELLED" || order.order_status === "COMPLETED") {
+    return { ok: false, error: "This order is closed." };
+  }
 
   const from = order.fulfilment_status as FulfilmentStatus;
   if (!canAdvanceFulfilment(from, to)) {

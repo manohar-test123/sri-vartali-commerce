@@ -67,11 +67,14 @@ export function OrderActionsPanel({
 
   const cancellable = canCancel(orderStatus, paymentStatus);
   const extensible = canExtendReservation(orderStatus, paymentStatus, reservationExpiresAt);
-  const nextFulfilment: FulfilmentStatus | null = canAdvanceFulfilment(fulfilmentStatus, "PROCESSING")
-    ? "PROCESSING"
-    : canAdvanceFulfilment(fulfilmentStatus, "PACKED")
-      ? "PACKED"
-      : null;
+  const closed = orderStatus === "CANCELLED" || orderStatus === "COMPLETED";
+  const nextFulfilment: FulfilmentStatus | null = closed
+    ? null
+    : canAdvanceFulfilment(fulfilmentStatus, "PROCESSING")
+      ? "PROCESSING"
+      : canAdvanceFulfilment(fulfilmentStatus, "PACKED")
+        ? "PACKED"
+        : null;
 
   return (
     <section className="rounded-2xl border border-wine-900/15 bg-white p-5">

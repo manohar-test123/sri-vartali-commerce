@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Order mutations (spec §22, §25, §26 — Phase 6).
+ * Order mutations (spec §22, §25, §26 — Phase 6; §32/§33 — Phase 8).
  *
  * placeOrderAction: the §22 pipeline. Steps 1-9 reuse the exact checkout
  * review path (validation + `getCheckoutView` quote); steps 10-16 run
@@ -9,9 +9,10 @@
  * prices, stock and totals from live rows under row locks — the browser
  * only ever supplies ids, quantities and address text, never prices.
  *
- * Dashboard actions (cancel / advance fulfilment / extend reservation) are
- * role-gated server actions; RLS remains the enforcement layer, the guard
- * is defense in depth, and every mutation lands in audit_logs (§45).
+ * Dashboard actions (verify payment / cancel / advance fulfilment / extend
+ * reservation) are role-gated server actions; RLS remains the enforcement
+ * layer, the guard is defense in depth, and every mutation lands in
+ * audit_logs (§45).
  */
 
 import { revalidatePath } from "next/cache";
@@ -31,9 +32,13 @@ import {
   canAdvanceFulfilment,
   canCancel,
   canExtendReservation,
+  canVerifyPayment,
   type FulfilmentStatus,
 } from "@/lib/orders/status";
+import { normalizeUtrReference } from "@/lib/orders/payment";
 import { getOrderByNumber } from "@/lib/orders/queries";
+import { buildPaymentConfirmedMessage } from "@/lib/whatsapp/templates";
+import { sendTextMessage } from "@/lib/whatsapp/send";
 import type { QuoteIssue } from "@/lib/checkout/quote";
 
 export type PlaceOrderResult =
@@ -320,4 +325,104 @@ export async function extendReservationAction(
   }
   revalidatePath(`/client/orders/${orderId}`);
   return { ok: true, message: "Reservation extended by 30 minutes." };
+}
+
+/** §32: a human confirms the money arrived. Stamps the verifier + time and
+ *  the optional UTR reference, then sends the §33 customer confirmation.
+ *  The status flip is a guarded conditional UPDATE — a double-click, or a
+ *  race with the expiry sweep cancelling the order, verifies nothing. */
+export async function verifyPaymentAction(
+  orderId: string,
+  utrInput = "",
+): Promise<DashboardActionResult> {
+  const denied = await requireClientRole("Verify payment");
+  if (denied) return { ok: false, error: denied };
+
+  const utr = normalizeUtrReference(utrInput);
+  if (!utr.ok) return { ok: false, error: utr.error };
+
+  const session = await getSession();
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "Verify payment: sign in required." };
+  }
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select(
+      "id, order_number, order_status, payment_status, customer_name, phone, total_paise",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return { ok: false, error: "Order not found." };
+  if (
+    !canVerifyPayment(
+      order.order_status as "CREATED",
+      order.payment_status as "PENDING",
+    )
+  ) {
+    return {
+      ok: false,
+      error:
+        order.payment_status === "VERIFIED"
+          ? "This payment is already verified."
+          : "This order's payment can no longer be verified here.",
+    };
+  }
+
+  const now = new Date().toISOString();
+  const { data: updated, error } = await admin
+    .from("orders")
+    .update({
+      payment_status: "VERIFIED",
+      payment_verified_by: session.user.id,
+      payment_verified_at: now,
+      paid_at: now,
+      utr_reference: utr.value,
+      // Paid stock stays reserved until fulfilment; only the expiry clock stops.
+      reservation_expires_at: null,
+    })
+    .eq("id", orderId)
+    .in("order_status", ["CREATED", "CONFIRMED"])
+    .in("payment_status", ["PENDING", "CUSTOMER_CLAIMS_PAID"])
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, error: `Update failed: ${error.message}` };
+  if (!updated) {
+    return {
+      ok: false,
+      error:
+        "Payment was not verified — the order changed state just now. Refresh and retry.",
+    };
+  }
+
+  await audit(session.user.id, session.user.role, "payment.verify", orderId, {
+    order_number: order.order_number,
+    from: order.payment_status,
+    to: "VERIFIED",
+    utr_reference: utr.value,
+  });
+
+  // §33 rides the same logged send path as every outbound message: when Meta
+  // is not wired yet it logs FAILED / NOT_CONFIGURED instead of throwing, so
+  // the verification stands and the gap is visible in WhatsApp activity.
+  const send = await sendTextMessage({
+    to: order.phone,
+    body: buildPaymentConfirmedMessage({
+      customerName: order.customer_name,
+      orderNumber: order.order_number,
+      totalPaise: order.total_paise,
+    }),
+    orderId,
+    templateName: "payment_confirmed",
+  });
+
+  revalidatePath("/client/orders");
+  revalidatePath(`/client/orders/${orderId}`);
+  return {
+    ok: true,
+    message: send.ok
+      ? "Payment verified — confirmation sent to the customer."
+      : `Payment verified, but the WhatsApp confirmation could not be sent (${send.errorCode}) — see WhatsApp activity.`,
+  };
 }

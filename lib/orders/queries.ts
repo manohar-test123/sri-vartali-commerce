@@ -32,6 +32,8 @@ export interface OrderRow {
   order_status: OrderStatus;
   payment_status: PaymentStatus;
   fulfilment_status: FulfilmentStatus;
+  utr_reference: string | null;
+  payment_verified_at: string | null;
   reservation_expires_at: string | null;
   paid_at: string | null;
   shipped_at: string | null;
@@ -63,6 +65,7 @@ export interface OrderWithItems {
 const ORDER_COLUMNS = `id, order_number, customer_name, phone, email,
   shipping_address_snapshot, subtotal_paise, discount_paise, shipping_paise,
   total_paise, order_status, payment_status, fulfilment_status,
+  utr_reference, payment_verified_at,
   reservation_expires_at, paid_at, shipped_at, delivered_at, created_at, updated_at`;
 
 const ITEM_COLUMNS = `id, order_id, product_id, variant_id,

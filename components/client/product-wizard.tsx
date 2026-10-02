@@ -88,9 +88,12 @@ export function ProductWizard({
   const schema = useMemo(() => {
     if (!category) return [];
     const own = parseSchema(category.attributeSchemaJson);
+    // Top-level categories carry their own schema; subcategories override
+    // the parent's when they define fields (effectiveSchema).
+    if (!category.parentId) return own;
     return effectiveSchema(
       parent ? parseSchema(parent.attributeSchemaJson) : [],
-      category.parentId ? own : null,
+      own,
     );
   }, [category, parent]);
   const editorSchema = useMemo(
@@ -195,12 +198,14 @@ export function ProductWizard({
     const parentCat = cat?.parentId
       ? (categories.find((c) => c.id === cat.parentId) ?? null)
       : null;
-    const nextSchema = cat
-      ? effectiveSchema(
-          parentCat ? parseSchema(parentCat.attributeSchemaJson) : [],
-          cat.parentId ? parseSchema(cat.attributeSchemaJson) : null,
-        )
-      : [];
+    const nextSchema = !cat
+      ? []
+      : cat.parentId
+        ? effectiveSchema(
+            parentCat ? parseSchema(parentCat.attributeSchemaJson) : [],
+            parseSchema(cat.attributeSchemaJson),
+          )
+        : parseSchema(cat.attributeSchemaJson);
     setForm((prev) => ({
       ...prev,
       categoryId,

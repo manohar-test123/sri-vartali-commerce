@@ -3,9 +3,9 @@
 /**
  * §13 delivery PIN checker. v1 validates the PIN format (6 digits, no
  * leading zero — Indian postal rules) and shows the dispatch estimate from
- * the product's dispatch_time_days. Pincode serviceability data arrives
- * with the courier integration (§21's full validation is Phase 5); until
- * then the copy says exactly that — no invented promises.
+ * the product's dispatch_time_days. The full §21 lookup (state/district
+ * autofill + post-office options) lives at checkout; until a courier
+ * integration arrives, the copy makes no invented promises.
  */
 
 import { useState } from "react";

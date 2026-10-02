@@ -99,46 +99,6 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- RLS helper functions (security definer: avoid recursion on profiles)
--- ---------------------------------------------------------------------------
-create or replace function public.current_app_role()
-returns app_role
-language sql
-stable
-security definer set search_path = public
-as $$
-  select p.role from public.profiles p where p.id = auth.uid();
-$$;
-
-create or replace function public.is_client_role()
-returns boolean
-language sql
-stable
-security definer set search_path = public
-as $$
-  select public.current_app_role() in ('CLIENT_OWNER', 'CLIENT_STAFF');
-$$;
-
-create or replace function public.is_super_admin()
-returns boolean
-language sql
-stable
-security definer set search_path = public
-as $$
-  select public.current_app_role() = 'SUPER_ADMIN';
-$$;
-
-create or replace function public.touch_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
--- ---------------------------------------------------------------------------
 -- Identity: profiles (bridge from Supabase Auth to app roles)
 -- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
@@ -266,13 +226,6 @@ create table if not exists public.collections (
   updated_at   timestamptz not null default now()
 );
 
-create table if not exists public.collection_products (
-  collection_id  uuid not null references public.collections (id) on delete cascade,
-  product_id     uuid not null references public.products (id) on delete cascade,
-  added_at       timestamptz not null default now(),
-  primary key (collection_id, product_id)
-);
-
 -- ---------------------------------------------------------------------------
 -- Products, media, variants, inventory (§3, §12-§17)
 -- ---------------------------------------------------------------------------
@@ -309,6 +262,14 @@ create table if not exists public.products (
 create index if not exists idx_products_category on public.products (category_id);
 create index if not exists idx_products_status on public.products (status);
 -- search by name/code is app-level (Phase 4); trigram/pglightswt deferred.
+
+-- Join table lives AFTER products: its FK target must exist at CREATE time.
+create table if not exists public.collection_products (
+  collection_id  uuid not null references public.collections (id) on delete cascade,
+  product_id     uuid not null references public.products (id) on delete cascade,
+  added_at       timestamptz not null default now(),
+  primary key (collection_id, product_id)
+);
 
 create table if not exists public.product_media (
   id                    uuid primary key default gen_random_uuid(),
@@ -353,20 +314,6 @@ create table if not exists public.inventory (
   unique (product_id, variant_id)
 );
 create index if not exists idx_inventory_product on public.inventory (product_id);
-
-create table if not exists public.inventory_movements (
-  id                 uuid primary key default gen_random_uuid(),
-  inventory_id       uuid not null references public.inventory (id) on delete cascade,
-  delta              integer not null,
-  delta_reserved     integer not null default 0,
-  reason             inventory_reason not null,
-  order_id           uuid references public.orders (id) on delete set null,
-  note               text,
-  actor_profile_id   uuid references public.profiles (id) on delete set null,
-  created_at         timestamptz not null default now()
-);
-create index if not exists idx_inventory_movements_inventory on public.inventory_movements (inventory_id);
-create index if not exists idx_inventory_movements_created on public.inventory_movements (created_at);
 
 -- ---------------------------------------------------------------------------
 -- Wishlists (§7) and carts (server-only, §18)
@@ -465,6 +412,23 @@ create table if not exists public.order_items (
 );
 create index if not exists idx_order_items_order on public.order_items (order_id);
 create index if not exists idx_order_items_product on public.order_items (product_id);
+
+-- Stock movements live AFTER orders: the order_id FK target must exist at
+-- CREATE time (movements are order-driven: ORDER_RESERVE / ORDER_RELEASE /
+-- ORDER_FULFIL, §16-§17).
+create table if not exists public.inventory_movements (
+  id                 uuid primary key default gen_random_uuid(),
+  inventory_id       uuid not null references public.inventory (id) on delete cascade,
+  delta              integer not null,
+  delta_reserved     integer not null default 0,
+  reason             inventory_reason not null,
+  order_id           uuid references public.orders (id) on delete set null,
+  note               text,
+  actor_profile_id   uuid references public.profiles (id) on delete set null,
+  created_at         timestamptz not null default now()
+);
+create index if not exists idx_inventory_movements_inventory on public.inventory_movements (inventory_id);
+create index if not exists idx_inventory_movements_created on public.inventory_movements (created_at);
 
 create table if not exists public.payments (
   id             uuid primary key default gen_random_uuid(),
@@ -624,6 +588,50 @@ create table if not exists public.audit_logs (
 );
 create index if not exists idx_audit_logs_created on public.audit_logs (created_at);
 create index if not exists idx_audit_logs_entity on public.audit_logs (entity_type, entity_id);
+
+-- ---------------------------------------------------------------------------
+-- RLS helper functions (security definer: avoid recursion on profiles)
+--
+-- Defined AFTER all tables: LANGUAGE sql functions validate table references
+-- at CREATE time, so these must not precede public.profiles (the integration
+-- deploy of 2026-10-02 failed exactly there — SQLSTATE 42P01).
+-- ---------------------------------------------------------------------------
+create or replace function public.current_app_role()
+returns app_role
+language sql
+stable
+security definer set search_path = public
+as $$
+  select p.role from public.profiles p where p.id = auth.uid();
+$$;
+
+create or replace function public.is_client_role()
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select public.current_app_role() in ('CLIENT_OWNER', 'CLIENT_STAFF');
+$$;
+
+create or replace function public.is_super_admin()
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select public.current_app_role() = 'SUPER_ADMIN';
+$$;
+
+create or replace function public.touch_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- updated_at triggers for every table that has the column

@@ -160,16 +160,20 @@ begin
         updated_at = now()
   returning id into v_customer;
 
+  -- Totals start at zero (NOT NULL columns carry no defaults); the real
+  -- figures land in the final UPDATE once lines are priced and reserved.
   insert into public.orders
     (customer_id, customer_name, phone, email,
-     shipping_address_snapshot, reservation_expires_at)
+     shipping_address_snapshot, reservation_expires_at,
+     subtotal_paise, discount_paise, shipping_paise, total_paise)
   values
     (v_customer,
      v_contact ->> 'fullName',
      v_contact ->> 'whatsappPhone',
      nullif(v_contact ->> 'email', ''),
      v_address,
-     now() + interval '30 minutes')
+     now() + interval '30 minutes',
+     0, 0, 0, 0)
   returning id, order_number into v_order, v_number;
 
   for v_line in select * from jsonb_array_elements(v_lines) loop

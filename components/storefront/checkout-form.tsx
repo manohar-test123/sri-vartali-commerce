@@ -172,7 +172,16 @@ export function CheckoutForm({
     setPlaceError(null);
     setPlacing(true);
     startTransition(async () => {
-      const result: PlaceOrderResult = await placeOrderAction(data);
+      let result: PlaceOrderResult;
+      try {
+        result = await placeOrderAction(data);
+      } catch {
+        setPlacing(false);
+        setPlaceError(
+          "Something went wrong while placing your order. Your cart is untouched — please try again.",
+        );
+        return;
+      }
       setPlacing(false);
       if (result.status === "invalid") {
         setVerified(null);

@@ -26,7 +26,6 @@ describe("unwrapPostalPayload", () => {
     expect(unwrapPostalPayload([])).toEqual({});
   });
 });
-
 describe("mapPostalPincodeResponse (§21)", () => {
   it("maps a success payload to state, district and deduped post offices", () => {
     const result = mapPostalPincodeResponse("500034", successPayload);

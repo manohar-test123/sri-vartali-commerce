@@ -51,7 +51,6 @@ export function unwrapPostalPayload(
 ): PostalPincodeEnvelope {
   return Array.isArray(payload) ? (payload[0] ?? {}) : payload;
 }
-
 /** Map a raw API payload to the §21 lookup shape. Exported for tests. */
 export function mapPostalPincodeResponse(
   pin: string,

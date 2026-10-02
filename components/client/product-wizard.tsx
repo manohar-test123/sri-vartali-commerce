@@ -4,11 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MediaManager } from "@/components/client/media-manager";
+import { ProductPreview } from "@/components/client/product-preview";
+import type { PreviewData } from "@/components/client/product-preview";
 import { StatusBadge } from "@/components/client/products-table";
 import { VariantsSection } from "@/components/client/variants-section";
 import { effectiveSchema, emptyValues, parseSchema } from "@/lib/catalog/attributes";
 import { createDraft, setProductStatus, updateProduct } from "@/lib/catalog/actions";
 import { discountPercent, parseRupeesToPaise, formatPaise } from "@/lib/catalog/money";
+import { seoDescriptionDefault, seoTitleDefault } from "@/lib/catalog/seo";
 import type { CategoryPickerItem, ProductBundle } from "@/lib/catalog/queries";
 
 /**
@@ -71,6 +74,10 @@ export function ProductWizard({
   const router = useRouter();
   const [form, setForm] = useState<FormState>(() => initialState(bundle));
   const [productId, setProductId] = useState<string | null>(bundle?.product.id ?? null);
+  // Ref mirror: async saves read the latest product id without waiting for
+  // a re-render, so a second save can never re-run the create path.
+  const productIdRef = useRef<string | null>(bundle?.product.id ?? null);
+  const busyRef = useRef(false);
   const [productCode, setProductCode] = useState<string | null>(
     bundle?.product.product_code ?? null,
   );
@@ -78,6 +85,7 @@ export function ProductWizard({
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedSnapshot = useRef<string>("");
 
@@ -108,6 +116,35 @@ export function ProductWizard({
 
   const canCreate =
     productId === null && form.name.trim() !== "" && form.categoryId !== "" && pricePaise !== null && pricePaise > 0;
+  const canSave =
+    form.name.trim() !== "" && form.categoryId !== "" && pricePaise !== null && pricePaise > 0;
+  const activeVariants = (bundle?.variants ?? []).filter((v) => v.isActive);
+
+  const previewData: PreviewData = {
+    name: form.name,
+    productCode,
+    status,
+    shortDescription: form.shortDescription,
+    description: form.description,
+    sellingPricePaise: pricePaise,
+    mrpPaise,
+    attributes: editorSchema.flatMap((field) => {
+      const value = form.attributeValues[field.key];
+      if (value === undefined || value === null || value === "") return [];
+      const text = typeof value === "boolean" ? (value ? "Yes" : "") : String(value);
+      return text === "" ? [] : [{ label: field.label, value: text }];
+    }),
+    media: bundle?.media ?? [],
+    stock:
+      activeVariants.length > 0
+        ? activeVariants.reduce((sum, v) => sum + v.quantity, 0)
+        : null,
+    lowStock: (bundle?.variants ?? []).some(
+      (v) => v.quantity > 0 && v.quantity <= v.lowStockThreshold,
+    ),
+    seoTitleOverride: form.seoTitle,
+    seoDescriptionOverride: form.seoDescription,
+  };
 
   const buildPatch = useCallback(
     (state: FormState): Parameters<typeof updateProduct>[1] => ({
@@ -115,7 +152,7 @@ export function ProductWizard({
       shortDescription: state.shortDescription,
       description: state.description,
       sellingPricePaise: parseRupeesToPaise(state.sellingPrice) ?? 0,
-      mrpPaise: form.mrp.trim() === "" ? null : parseRupeesToPaise(state.mrp),
+      mrpPaise: state.mrp.trim() === "" ? null : parseRupeesToPaise(state.mrp),
       attributeValues: state.attributeValues,
       categoryId: state.categoryId,
       careInstructions: state.careInstructions,
@@ -129,13 +166,70 @@ export function ProductWizard({
       seoTitle: state.seoTitle,
       seoDescription: state.seoDescription,
     }),
-    // mrp read from form intentionally for the null-vs-parse distinction
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
-  // Autosave (§16): debounced on every change. In new-product mode the
-  // first valid change creates the draft; afterwards updates flow normally.
+  // One save path for autosave and "Save draft" (§16 + §15H). In new-product
+  // mode the first valid save creates the draft and then immediately pushes
+  // the full form — createDraft persists only name/category/price, so
+  // anything else typed before the draft existed must be flushed through
+  // updateProduct or it is lost (the autosave race this closes).
+  const performSave = useCallback(
+    async (state: FormState) => {
+      const price = parseRupeesToPaise(state.sellingPrice);
+      if (
+        state.name.trim() === "" ||
+        state.categoryId === "" ||
+        price === null ||
+        price <= 0
+      ) {
+        return;
+      }
+      if (busyRef.current) return;
+      busyRef.current = true;
+      setSaving(true);
+      setNotice(null);
+      try {
+        const snapshot = JSON.stringify(state);
+        if (productIdRef.current === null) {
+          const created = await createDraft({
+            name: state.name,
+            categoryId: state.categoryId,
+            sellingPricePaise: price,
+            mrpPaise: state.mrp.trim() === "" ? null : parseRupeesToPaise(state.mrp),
+            shortDescription: state.shortDescription,
+          });
+          if (!created.ok) {
+            setNotice(created.error);
+            return;
+          }
+          productIdRef.current = created.data.id;
+          setProductId(created.data.id);
+          setProductCode(created.data.productCode);
+          window.history.replaceState(null, "", `/client/products/${created.data.id}`);
+          const followUp = await updateProduct(created.data.id, buildPatch(state));
+          if (!followUp.ok) {
+            setNotice(followUp.error);
+            return;
+          }
+        } else {
+          const result = await updateProduct(productIdRef.current, buildPatch(state));
+          if (!result.ok) {
+            setNotice(result.error);
+            return;
+          }
+        }
+        savedSnapshot.current = snapshot;
+        setSavedAt(new Date());
+      } finally {
+        busyRef.current = false;
+        setSaving(false);
+      }
+    },
+    [buildPatch],
+  );
+
+  // Autosave (§16): debounced on every change.
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
 
@@ -145,49 +239,20 @@ export function ProductWizard({
       return;
     }
 
-    saveTimer.current = setTimeout(async () => {
-      setSaving(true);
-      setNotice(null);
-      try {
-        if (productId === null) {
-          const result = await createDraft({
-            name: form.name,
-            categoryId: form.categoryId,
-            sellingPricePaise: pricePaise,
-            mrpPaise: mrpPaise,
-            shortDescription: form.shortDescription,
-          });
-          if (!result.ok) {
-            setNotice(result.error);
-            return;
-          }
-          savedSnapshot.current = JSON.stringify({
-            ...form,
-            attributeValues: emptyValues(schema),
-          });
-          setProductId(result.data.id);
-          setProductCode(result.data.productCode);
-          window.history.replaceState(null, "", `/client/products/${result.data.id}`);
-        } else {
-          const patch = buildPatch(form);
-          const result = await updateProduct(productId, patch);
-          if (!result.ok) {
-            setNotice(result.error);
-            return;
-          }
-          savedSnapshot.current = snapshot;
-        }
-        setSavedAt(new Date());
-      } finally {
-        setSaving(false);
-      }
+    saveTimer.current = setTimeout(() => {
+      void performSave(form);
     }, 2000);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, productId, pricePaise, mrpPaise]);
+  }, [form, pricePaise, performSave]);
+
+  function saveNow() {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    void performSave(form);
+  }
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -256,19 +321,32 @@ export function ProductWizard({
           ) : savedAt ? (
             <span>Saved {savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ✓</span>
           ) : null}
-          {productId ? (
-            <div className="mt-2 flex gap-2">
-              {status === "DRAFT" ? (
-                <button
-                  type="button"
-                  onClick={publish}
-                  className="rounded-full bg-wine-900 px-4 py-2 text-xs font-medium text-ivory-50 hover:bg-wine-800"
-                >
-                  Publish
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={saveNow}
+              disabled={saving || !canSave}
+              className="rounded-full border border-wine-900/20 px-4 py-2 text-xs font-medium text-wine-900 hover:border-gold-500 disabled:opacity-40"
+            >
+              Save draft
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              className="rounded-full border border-wine-900/20 px-4 py-2 text-xs font-medium text-wine-900 hover:border-gold-500"
+            >
+              Preview
+            </button>
+            {productId && status === "DRAFT" ? (
+              <button
+                type="button"
+                onClick={publish}
+                className="rounded-full bg-wine-900 px-4 py-2 text-xs font-medium text-ivory-50 hover:bg-wine-800"
+              >
+                Publish
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -501,8 +579,16 @@ export function ProductWizard({
       {/* G. SEO */}
       <Section title="SEO">
         <p className="text-xs text-wine-900/50">
-          Auto-generated from name and short description when left blank.
+          Left blank, metadata is auto-generated — this is what searchers see today:
         </p>
+        <div className="rounded-xl bg-wine-900/5 px-3 py-2 text-xs text-wine-900/70">
+          <span className="font-medium text-wine-900">
+            {seoTitleDefault(form.name)}
+          </span>
+          <span className="mt-0.5 block">
+            {seoDescriptionDefault(form.name, form.shortDescription)}
+          </span>
+        </div>
         <Field label="SEO title override">
           <input value={form.seoTitle} onChange={(e) => set("seoTitle", e.target.value)} className={inputClass} />
         </Field>
@@ -510,6 +596,10 @@ export function ProductWizard({
           <textarea value={form.seoDescription} onChange={(e) => set("seoDescription", e.target.value)} rows={2} className={inputClass} />
         </Field>
       </Section>
+
+      {previewOpen ? (
+        <ProductPreview data={previewData} onClose={() => setPreviewOpen(false)} />
+      ) : null}
     </div>
   );
 }

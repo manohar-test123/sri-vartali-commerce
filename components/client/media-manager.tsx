@@ -18,7 +18,9 @@ import type { ProductMediaRow } from "@/lib/catalog/types";
  * Cloudinary isn't configured, images can be added by URL.
  */
 
-type Upload = { name: string; progress: number; error?: string };
+type Upload = { id: number; file: File; progress: number; error?: string };
+
+let uploadSeq = 0;
 
 export function MediaManager({
   productId,
@@ -82,81 +84,76 @@ export function MediaManager({
     };
   }
 
-  function uploadOne(file: File, index: number): Promise<void> {
-    return new Promise((resolve) => {
-      sign()
-        .then((signature) => {
-          if (!signature.configured) {
-            throw new Error(
-              "Cloudinary isn't configured yet (Settings → Integrations) — use “Add by URL” below.",
-            );
-          }
-          const form = new FormData();
-          form.append("file", file);
-          form.append("api_key", signature.apiKey!);
-          form.append("timestamp", signature.timestamp!);
-          form.append("folder", signature.folder!);
-          form.append("signature", signature.signature!);
+  function patchUpload(id: number, patch: Partial<Upload>) {
+    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+  }
 
+  // §15B: a failed upload stays on screen with a Retry — it never just
+  // vanishes. Success removes the card once the row is persisted.
+  async function uploadOne(entry: Upload): Promise<void> {
+    patchUpload(entry.id, { error: undefined, progress: 0 });
+    try {
+      const signature = await sign();
+      if (!signature.configured) {
+        throw new Error(
+          "Cloudinary isn't configured yet (Settings → Integrations) — use “Add by URL” below.",
+        );
+      }
+      const form = new FormData();
+      form.append("file", entry.file);
+      form.append("api_key", signature.apiKey!);
+      form.append("timestamp", signature.timestamp!);
+      form.append("folder", signature.folder!);
+      form.append("signature", signature.signature!);
+
+      const body = await new Promise<{ secure_url: string; public_id: string }>(
+        (resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open("POST", `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`);
+          xhr.open(
+            "POST",
+            `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
+          );
           xhr.upload.onprogress = (event) => {
             if (!event.lengthComputable) return;
-            const progress = Math.round((event.loaded / event.total) * 100);
-            setUploads((prev) => prev.map((u, i) => (i === index ? { ...u, progress } : u)));
+            patchUpload(entry.id, {
+              progress: Math.round((event.loaded / event.total) * 100),
+            });
           };
-          xhr.onload = async () => {
+          xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-              const body = JSON.parse(xhr.responseText) as {
-                secure_url: string;
-                public_id: string;
-              };
-              const result = await addMedia(productId, {
-                url: body.secure_url,
-                cloudinaryPublicId: body.public_id,
-              });
-              if (!result.ok) {
-                setUploads((prev) =>
-                  prev.map((u, i) => (i === index ? { ...u, error: result.error } : u)),
-                );
-              }
+              resolve(JSON.parse(xhr.responseText));
             } else {
-              setUploads((prev) =>
-                prev.map((u, i) => (i === index ? { ...u, error: `HTTP ${xhr.status}` } : u)),
-              );
+              reject(new Error(`HTTP ${xhr.status}`));
             }
-            resolve();
           };
-          xhr.onerror = () => {
-            setUploads((prev) =>
-              prev.map((u, i) => (i === index ? { ...u, error: "network error" } : u)),
-            );
-            resolve();
-          };
+          xhr.onerror = () => reject(new Error("network error"));
           xhr.send(form);
-        })
-        .catch((error: unknown) => {
-          setUploads((prev) =>
-            prev.map((u, i) =>
-              i === index ? { ...u, error: (error as Error).message } : u,
-            ),
-          );
-          resolve();
-        });
-    });
+        },
+      );
+
+      const result = await addMedia(productId, {
+        url: body.secure_url,
+        cloudinaryPublicId: body.public_id,
+      });
+      if (!result.ok) {
+        patchUpload(entry.id, { error: result.error });
+        return;
+      }
+      setUploads((prev) => prev.filter((u) => u.id !== entry.id));
+    } catch (error) {
+      patchUpload(entry.id, { error: (error as Error).message });
+    }
   }
 
   async function onFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const startIndex = uploads.length;
-    setUploads((prev) => [
-      ...prev,
-      ...Array.from(files).map((f) => ({ name: f.name, progress: 0 })),
-    ]);
-    for (let i = 0; i < files.length; i++) {
-      await uploadOne(files[i], startIndex + i);
-    }
-    setUploads((prev) => prev.filter((u) => !u.error));
+    const entries: Upload[] = Array.from(files).map((file) => ({
+      id: ++uploadSeq,
+      file,
+      progress: 0,
+    }));
+    setUploads((prev) => [...prev, ...entries]);
+    await Promise.all(entries.map((entry) => uploadOne(entry)));
     router.refresh();
   }
 
@@ -245,19 +242,26 @@ export function MediaManager({
           </div>
         ))}
 
-        {uploads.map((u, i) => (
+        {uploads.map((u) => (
           <div
-            key={`${u.name}-${i}`}
+            key={u.id}
             className="flex h-44 w-36 flex-col items-center justify-center rounded-xl border border-wine-900/15 bg-white p-2 text-center text-[11px]"
           >
             {u.error ? (
               <>
-                <span className="text-red-700">{u.name}</span>
+                <span className="truncate text-red-700">{u.file.name}</span>
                 <span className="mt-1 text-red-700/80">{u.error}</span>
+                <button
+                  type="button"
+                  className="mt-2 rounded-full border border-red-700/40 px-2.5 py-1 text-[11px] text-red-800 hover:bg-red-50"
+                  onClick={() => void uploadOne(u)}
+                >
+                  Retry
+                </button>
               </>
             ) : (
               <>
-                <span className="truncate text-wine-900/70">{u.name}</span>
+                <span className="truncate text-wine-900/70">{u.file.name}</span>
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-wine-900/10">
                   <div className="h-full bg-gold-500" style={{ width: `${u.progress}%` }} />
                 </div>
@@ -270,10 +274,17 @@ export function MediaManager({
         <button
           type="button"
           onClick={() => fileInput.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            void onFiles(e.dataTransfer.files);
+          }}
           className="flex h-44 w-36 flex-col items-center justify-center rounded-xl border border-dashed border-wine-900/25 text-sm text-wine-900/60 hover:border-gold-500 hover:text-wine-900"
         >
           + Upload
-          <span className="mt-1 text-[11px] text-wine-900/40">drag cards to reorder</span>
+          <span className="mt-1 text-[11px] text-wine-900/40">
+            drop files here · drag cards to reorder
+          </span>
         </button>
         <input
           ref={fileInput}

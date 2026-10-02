@@ -26,12 +26,18 @@ jobs:
         run: npm ci
 
       # Spec §53 order: Install → Typecheck → Lint → Unit → Integration → Build.
-      # Test jobs are added when the suites land (Phase 2+).
+      # The unit suite landed with Phase 2 (catalog engine); integration and e2e
+      # steps are added when those suites land. Step lives INSIDE this job so
+      # the required-check context on main ("Typecheck · Lint · Build") is
+      # unchanged.
       - name: Typecheck
         run: npm run typecheck
 
       - name: Lint
         run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
 
       - name: Build
         run: npm run build

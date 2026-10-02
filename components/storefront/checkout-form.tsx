@@ -13,6 +13,7 @@ import { useState, useTransition } from "react";
 
 import { abandonBuyNow } from "@/lib/cart/actions";
 import { reviewCheckout } from "@/lib/checkout/actions";
+import { placeOrderAction, type PlaceOrderResult } from "@/lib/orders/actions";
 import { formatPaise } from "@/lib/catalog/money";
 import type { PinLookup } from "@/lib/checkout/pincode";
 import type {
@@ -69,6 +70,8 @@ export function CheckoutForm({
   }>({ contact: {}, address: {} });
   const [stockIssues, setStockIssues] = useState<QuoteIssue[] | null>(null);
   const [verified, setVerified] = useState<VerifiedCheckout | null>(null);
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState<string | null>(null);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -125,6 +128,7 @@ export function CheckoutForm({
   function submit(data: FormData) {
     setErrors({ contact: {}, address: {} });
     setStockIssues(null);
+    setPlaceError(null);
     startTransition(async () => {
       const result: CheckoutReviewResult = await reviewCheckout(data);
       if (result.status === "invalid") {
@@ -148,61 +152,49 @@ export function CheckoutForm({
     });
   }
 
-  if (verified) {
-    return (
-      <div className="grid gap-10 lg:grid-cols-[1fr_340px]">
-        <section
-          aria-labelledby="verified-heading"
-          className="rounded-2xl border border-emerald-600/30 bg-emerald-50/60 p-6"
-        >
-          <h2
-            id="verified-heading"
-            className="font-serif text-2xl text-wine-900"
-          >
-            Order verified ✓
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-wine-900/70">
-            Your items, address and totals were checked and calculated on the
-            server. Order placement — and WhatsApp confirmation with payment
-            instructions — arrives with the order system update; your verified
-            order will carry exactly these items and totals.
-          </p>
-
-          <h3 className="mt-6 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
-            Delivering to
-          </h3>
-          <p className="mt-1.5 text-sm leading-6 text-wine-900/80">
-            {verified.contact.fullName} · +91 {verified.contact.whatsappPhone}
-            {verified.contact.email ? ` · ${verified.contact.email}` : ""}
-            <br />
-            {verified.address.house}, {verified.address.street}
-            <br />
-            {verified.address.area}
-            {verified.address.locality ? `, ${verified.address.locality}` : ""}
-            <br />
-            {verified.address.district ? `${verified.address.district}, ` : ""}
-            {verified.address.state ? `${verified.address.state}, ` : ""}
-            {verified.address.pinCode}
-            {verified.address.landmark ? ` — Landmark: ${verified.address.landmark}` : ""}
-          </p>
-
-          <button
-            type="button"
-            className="mt-5 rounded-full border border-wine-900/30 px-5 py-2 text-sm text-wine-900 hover:bg-white"
-            onClick={() => setVerified(null)}
-          >
-            Edit details
-          </button>
-        </section>
-
-        <OrderSummary
-          heading="Verified total"
-          lines={verified.lines}
-          totals={verified.totals}
-          lineImages={lineImages}
-        />
-      </div>
-    );
+  /** §22 steps 10-16: create the order, then hand off to WhatsApp (§27). */
+  function place(data: FormData) {
+    setPlaceError(null);
+    setPlacing(true);
+    startTransition(async () => {
+      let result: PlaceOrderResult;
+      try {
+        result = await placeOrderAction(data);
+      } catch {
+        setPlacing(false);
+        setPlaceError(
+          "Something went wrong while placing your order. Your cart is untouched — please try again.",
+        );
+        return;
+      }
+      setPlacing(false);
+      if (result.status === "invalid") {
+        setVerified(null);
+        setErrors({
+          contact: result.contactErrors as Record<string, string>,
+          address: result.addressErrors as Record<string, string>,
+        });
+        return;
+      }
+      if (result.status === "issues") {
+        setVerified(null);
+        setStockIssues(result.issues);
+        router.refresh();
+        return;
+      }
+      if (result.status === "empty") {
+        router.replace("/cart");
+        return;
+      }
+      if (result.status === "error") {
+        setVerified(null);
+        setPlaceError(result.error);
+        router.refresh();
+        return;
+      }
+      // "placed": the action redirected to /order/<n>?placed=1 — the
+      // confirmation page takes over from here.
+    });
   }
 
   return (
@@ -211,7 +203,9 @@ export function CheckoutForm({
       className="grid gap-10 lg:grid-cols-[1fr_340px]"
       noValidate
     >
-      <div className="space-y-8">
+      {/* Stays mounted while verified so the place action receives the
+          same FormData the review saw — hidden, not unmounted. */}
+      <div className="space-y-8" hidden={verified !== null}>
         {mode === "buy-now" ? (
           <p className="rounded-xl border border-gold-300 bg-gold-100/60 px-4 py-3 text-sm text-wine-900/80">
             Checking out with <strong>Buy Now</strong> — just this item.{" "}
@@ -499,13 +493,83 @@ export function CheckoutForm({
         </div>
       </div>
 
+      {verified ? (
+        <section
+          aria-labelledby="verified-heading"
+          className="h-fit rounded-2xl border border-emerald-600/30 bg-emerald-50/60 p-6"
+        >
+          <h2 id="verified-heading" className="font-serif text-2xl text-wine-900">
+            Order verified ✓
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-wine-900/70">
+            Your items, address and totals were checked and calculated on the
+            server. Continue to place the order — we&apos;ll then open WhatsApp
+            with your order details prefilled.
+          </p>
+
+          <h3 className="mt-6 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+            Delivering to
+          </h3>
+          <p className="mt-1.5 text-sm leading-6 text-wine-900/80">
+            {verified.contact.fullName} · +91 {verified.contact.whatsappPhone}
+            {verified.contact.email ? ` · ${verified.contact.email}` : ""}
+            <br />
+            {verified.address.house}, {verified.address.street}
+            <br />
+            {verified.address.area}
+            {verified.address.locality ? `, ${verified.address.locality}` : ""}
+            <br />
+            {verified.address.district ? `${verified.address.district}, ` : ""}
+            {verified.address.state ? `${verified.address.state}, ` : ""}
+            {verified.address.pinCode}
+            {verified.address.landmark ? ` — Landmark: ${verified.address.landmark}` : ""}
+          </p>
+
+          {placeError ? (
+            <p
+              role="alert"
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            >
+              {placeError}
+            </p>
+          ) : null}
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              formAction={place}
+              disabled={placing || pending}
+              className="rounded-full bg-wine-900 px-8 py-3 text-sm font-medium text-ivory-50 transition-colors hover:bg-wine-800 disabled:opacity-50"
+            >
+              {placing || pending ? "Placing order…" : "Continue to WhatsApp"}
+            </button>
+            <button
+              type="button"
+              className="rounded-full border border-wine-900/30 px-5 py-2 text-sm text-wine-900 hover:bg-white disabled:opacity-50"
+              onClick={() => setVerified(null)}
+              disabled={placing || pending}
+            >
+              Edit details
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] leading-4 text-wine-900/50">
+            Placing reserves your items for 30 minutes while payment is
+            confirmed on WhatsApp.
+          </p>
+        </section>
+      ) : null}
+
       <OrderSummary
-        heading="Your order"
-        lines={lines}
-        totals={totals}
-        issues={issues}
+        heading={verified ? "Verified total" : "Your order"}
+        lines={verified ? verified.lines : lines}
+        totals={verified ? verified.totals : totals}
+        issues={verified ? undefined : issues}
         lineImages={lineImages}
-        note="Estimated from live prices — the verified total appears after you verify."
+        note={
+          verified
+            ? undefined
+            : "Estimated from live prices — the verified total appears after you verify."
+        }
       />
     </form>
   );

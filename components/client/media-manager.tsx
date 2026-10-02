@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -41,6 +41,14 @@ export function MediaManager({
   );
   const dragIndex = useRef<number | null>(null);
   const [urlValue, setUrlValue] = useState("");
+
+  // The component doesn't remount on router.refresh(), so the server's
+  // media rows must be mirrored into local state — otherwise an image
+  // added by URL/upload only appears after a manual page reload.
+  useEffect(() => {
+    setOrder(media);
+    setPrimaryId(media.find((m) => m.is_primary)?.id ?? media[0]?.id ?? null);
+  }, [media]);
 
   async function persistOrder(nextOrder: ProductMediaRow[], nextPrimary: string | null) {
     setOrder(nextOrder);

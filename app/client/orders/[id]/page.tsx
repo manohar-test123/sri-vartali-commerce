@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { OrderActionsPanel } from "@/components/client/order-actions";
 import { formatPaise } from "@/lib/catalog/money";
 import { getOrderById, listOrderHistory } from "@/lib/orders/queries";
+import { listMessagesForOrder } from "@/lib/whatsapp/queries";
 import {
   FULFILMENT_STATUS_CLASSES,
   FULFILMENT_STATUS_LABELS,
@@ -40,6 +41,7 @@ export default async function ClientOrderDetailPage({
   if (!found) notFound();
   const { order, items } = found;
   const history = await listOrderHistory(order.id);
+  const whatsappLog = await listMessagesForOrder(order.id);
   const address = order.shipping_address_snapshot;
 
   return (
@@ -178,6 +180,44 @@ export default async function ClientOrderDetailPage({
 
           <section className="rounded-2xl border border-wine-900/15 bg-white p-5">
             <h2 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+              WhatsApp activity
+            </h2>
+            {whatsappLog.length === 0 ? (
+              <p className="mt-3 text-sm text-wine-900/50">
+                No automated messages logged for this order yet.
+              </p>
+            ) : (
+              <ul className="mt-3 divide-y divide-wine-900/10 text-sm">
+                {whatsappLog.map((row) => (
+                  <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-x-3 py-2">
+                    <span className="text-wine-900/80">
+                      {row.direction === "INBOUND" ? "From" : "To"} {row.recipient_phone}
+                      {row.template_name ? ` · ${row.template_name}` : ` · ${row.message_type}`}
+                    </span>
+                    <span className="flex items-center gap-2 text-xs text-wine-900/50">
+                      <span>{formatLogTime(row.sent_at ?? row.delivered_at ?? row.failed_at ?? row.created_at)}</span>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 ${
+                          row.status === "FAILED"
+                            ? "border-red-300 bg-red-50 text-red-800"
+                            : row.status === "READ" || row.status === "DELIVERED"
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                              : "border-wine-900/20 bg-wine-900/5 text-wine-900/70"
+                        }`}
+                      >
+                        {row.status === "FAILED" && row.error_code
+                          ? `FAILED · ${row.error_code}`
+                          : row.status}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-wine-900/15 bg-white p-5">
+            <h2 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
               Status history
             </h2>
             {history.length === 0 ? (
@@ -228,4 +268,11 @@ function Chip({ label, className }: { label: string; className: string }) {
       {label}
     </span>
   );
+}
+
+function formatLogTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }

@@ -21,7 +21,9 @@ export const metadata: Metadata = {
     "Premium handpicked sarees and fashion — Sri Vartali Sarees. Timeless weaves for celebration.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="en"

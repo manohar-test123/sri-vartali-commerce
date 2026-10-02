@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/db/server";
+import { createClient as createServerClient } from "@/lib/db/server";
 import type { AppRole } from "@/lib/auth/roles";
 
 export type SessionUser = {

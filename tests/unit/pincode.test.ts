@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { mapPostalPincodeResponse } from "@/lib/checkout/pincode";
+import {
+  mapPostalPincodeResponse,
+  unwrapPostalPayload,
+} from "@/lib/checkout/pincode";
 
 const successPayload = {
   Message: "4 Post Office(s) found",
@@ -11,6 +14,18 @@ const successPayload = {
     { Name: "Nanakramguda", District: "Hyderabad", State: "Telangana", Block: "Serilingampally" },
   ],
 };
+
+describe("unwrapPostalPayload", () => {
+  it("unwraps the array envelope the API actually returns (regression: bare-envelope reads saw every PIN as not found)", () => {
+    const wrapped = [successPayload];
+    expect(unwrapPostalPayload(wrapped)).toEqual(successPayload);
+    expect(unwrapPostalPayload(successPayload)).toEqual(successPayload);
+  });
+
+  it("an empty array unwraps to an empty envelope (→ not found, not a crash)", () => {
+    expect(unwrapPostalPayload([])).toEqual({});
+  });
+});
 
 describe("mapPostalPincodeResponse (§21)", () => {
   it("maps a success payload to state, district and deduped post offices", () => {

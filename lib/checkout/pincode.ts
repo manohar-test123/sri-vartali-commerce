@@ -39,6 +39,19 @@ export interface PostalPincodeEnvelope {
   }> | null;
 }
 
+/** Raw api.postalpincode.in payload — the envelope arrives wrapped in an array. */
+export type PostalPincodePayload = PostalPincodeEnvelope | PostalPincodeEnvelope[];
+
+/**
+ * Unwrap the API's array wrapper to the single envelope it always carries.
+ * Exported for tests.
+ */
+export function unwrapPostalPayload(
+  payload: PostalPincodePayload,
+): PostalPincodeEnvelope {
+  return Array.isArray(payload) ? (payload[0] ?? {}) : payload;
+}
+
 /** Map a raw API payload to the §21 lookup shape. Exported for tests. */
 export function mapPostalPincodeResponse(
   pin: string,
@@ -85,7 +98,9 @@ export async function lookupPinCode(rawPin: string): Promise<PinLookupResult> {
       { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
     );
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = (await response.json()) as PostalPincodeEnvelope;
+    const payload = unwrapPostalPayload(
+      (await response.json()) as PostalPincodePayload,
+    );
     result = mapPostalPincodeResponse(pin, payload);
   } catch {
     // Network/timeout/parse failure — never block checkout on the lookup.

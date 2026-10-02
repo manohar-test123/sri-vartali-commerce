@@ -101,3 +101,28 @@ export function buildInactiveOrderMessage(
     `If this is unexpected, please message us here and our team at ${store} will help you place a fresh order.`,
   ].join("\n");
 }
+
+/**
+ * §33 confirmation — the only place the store says a payment IS confirmed,
+ * and it is sent exclusively after a human verified it (§32). The §31 ack
+ * deliberately never uses this wording.
+ */
+export function buildPaymentConfirmedMessage(
+  input: { customerName: string; orderNumber: string; totalPaise: number },
+): string {
+  return [
+    "Payment confirmed ✅",
+    "",
+    `Thank you, ${input.customerName}!`,
+    "",
+    "Order ID:",
+    input.orderNumber,
+    "",
+    "Amount received:",
+    formatPaise(input.totalPaise),
+    "",
+    "Your order is now being prepared.",
+    "",
+    "We will message you again with tracking details once it is dispatched.",
+  ].join("\n");
+}

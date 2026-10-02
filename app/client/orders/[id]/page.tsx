@@ -252,6 +252,8 @@ export default async function ClientOrderDetailPage({
             orderStatus={order.order_status}
             paymentStatus={order.payment_status}
             fulfilmentStatus={order.fulfilment_status}
+            paymentVerifiedAt={order.payment_verified_at}
+            utrReference={order.utr_reference}
             reservationExpiresAt={order.reservation_expires_at}
           />
         </div>

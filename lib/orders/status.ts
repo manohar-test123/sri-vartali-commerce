@@ -58,6 +58,20 @@ export function canExtendReservation(
   );
 }
 
+/** §32: manual verification is offered while the order is open and its
+ *  payment is still unsettled (PENDING or a customer claim). Whitelist,
+ *  not blacklist — REJECTED/REFUNDED are terminal for this action too. */
+export function canVerifyPayment(
+  orderStatus: OrderStatus,
+  paymentStatus: PaymentStatus,
+): boolean {
+  return (
+    orderStatus !== "CANCELLED" &&
+    orderStatus !== "COMPLETED" &&
+    (paymentStatus === "PENDING" || paymentStatus === "CUSTOMER_CLAIMS_PAID")
+  );
+}
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   CREATED: "Created",
   CONFIRMED: "Confirmed",

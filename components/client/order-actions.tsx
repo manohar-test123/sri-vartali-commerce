@@ -3,9 +3,10 @@
 /**
  * Order action panel (spec §34). Phase 6 actions: cancel (releases the
  * reservation), extend reservation, advance fulfilment (PROCESSING /
- * PACKED). Verify-payment lands with the payments phase; courier /
- * tracking / shipped with the shipping phase — the disabled block keeps
- * the panel shaped like the spec so the additions are drop-ins.
+ * PACKED). Phase 8 adds the §32 payment block: current status, optional
+ * UTR / reference, and VERIFY PAYMENT — the only path to payment_status =
+ * VERIFIED. Courier / tracking / shipped stay reserved for the shipping
+ * phase; the disabled block keeps the panel shaped like the spec.
  */
 
 import { useRouter } from "next/navigation";
@@ -15,13 +16,20 @@ import {
   advanceFulfilmentAction,
   cancelOrderAction,
   extendReservationAction,
+  verifyPaymentAction,
 } from "@/lib/orders/actions";
 import type {
   FulfilmentStatus,
   OrderStatus,
   PaymentStatus,
 } from "@/lib/orders/status";
-import { canAdvanceFulfilment, canCancel, canExtendReservation } from "@/lib/orders/status";
+import {
+  canAdvanceFulfilment,
+  canCancel,
+  canExtendReservation,
+  canVerifyPayment,
+  PAYMENT_STATUS_LABELS,
+} from "@/lib/orders/status";
 
 interface OrderActionsProps {
   orderId: string;
@@ -29,6 +37,8 @@ interface OrderActionsProps {
   orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
   fulfilmentStatus: FulfilmentStatus;
+  paymentVerifiedAt: string | null;
+  utrReference: string | null;
   reservationExpiresAt: string | null;
 }
 
@@ -44,12 +54,15 @@ export function OrderActionsPanel({
   orderStatus,
   paymentStatus,
   fulfilmentStatus,
+  paymentVerifiedAt,
+  utrReference,
   reservationExpiresAt,
 }: OrderActionsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [utr, setUtr] = useState("");
 
   function run(fn: () => Promise<{ ok: true; message: string | null } | { ok: false; error: string }>) {
     setMessage(null);
@@ -67,6 +80,7 @@ export function OrderActionsPanel({
 
   const cancellable = canCancel(orderStatus, paymentStatus);
   const extensible = canExtendReservation(orderStatus, paymentStatus, reservationExpiresAt);
+  const verifiable = canVerifyPayment(orderStatus, paymentStatus);
   const closed = orderStatus === "CANCELLED" || orderStatus === "COMPLETED";
   const nextFulfilment: FulfilmentStatus | null = closed
     ? null
@@ -92,6 +106,63 @@ export function OrderActionsPanel({
           {error}
         </p>
       ) : null}
+
+      {/* §32 payment block — verification is offered only while the
+          payment is unsettled on an open order. */}
+      <div className="mt-4 rounded-xl border border-wine-900/15 bg-wine-900/[0.03] p-4">
+        <h3 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+          Payment
+        </h3>
+        <p className="mt-2 text-sm text-wine-900/80">
+          Status:{" "}
+          <span className="font-medium text-wine-900">
+            {PAYMENT_STATUS_LABELS[paymentStatus]}
+          </span>
+        </p>
+
+        {verifiable ? (
+          <div className="mt-3">
+            <label
+              htmlFor="utr-reference"
+              className="block text-xs text-wine-900/60"
+            >
+              Optional UTR / Reference
+            </label>
+            <input
+              id="utr-reference"
+              name="utr-reference"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              value={utr}
+              maxLength={40}
+              placeholder="e.g. 402912345678"
+              className="mt-1 w-full rounded-lg border border-wine-900/20 bg-white px-3 py-2 text-sm text-wine-900 placeholder:text-wine-900/30 focus:border-wine-900/50 focus:outline-none"
+              disabled={pending}
+              onChange={(event) => setUtr(event.target.value)}
+            />
+            <button
+              type="button"
+              className={`${primary} mt-3 w-full`}
+              disabled={pending}
+              onClick={() => run(() => verifyPaymentAction(orderId, utr))}
+            >
+              Verify payment
+            </button>
+          </div>
+        ) : paymentStatus === "VERIFIED" ? (
+          <p className="mt-2 text-xs text-wine-900/60">
+            Verified
+            {paymentVerifiedAt
+              ? ` ${new Date(paymentVerifiedAt).toLocaleString("en-IN", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}`
+              : ""}
+            {utrReference ? ` · UTR ${utrReference}` : ""}
+          </p>
+        ) : null}
+      </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
         {nextFulfilment ? (
@@ -135,10 +206,6 @@ export function OrderActionsPanel({
       </div>
 
       <div className="mt-6 space-y-3 border-t border-dashed border-wine-900/20 pt-4 text-sm text-wine-900/50">
-        <p>
-          <strong className="font-medium text-wine-900/70">Verify payment</strong>{" "}
-          — payment verification and refunds arrive with the payments update.
-        </p>
         <p>
           <strong className="font-medium text-wine-900/70">Mark shipped</strong>{" "}
           — courier, tracking ID and shipping messages arrive with the

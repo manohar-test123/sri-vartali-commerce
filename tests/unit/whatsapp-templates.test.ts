@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildInactiveOrderMessage,
   buildPaidAckMessage,
+  buildPaymentConfirmedMessage,
   buildPaymentInstructionsMessage,
   hasQrToSend,
 } from "@/lib/whatsapp/templates";
@@ -128,5 +129,35 @@ describe("buildInactiveOrderMessage", () => {
       businessName: null,
     });
     expect(message).toContain("Sri Vartali Sarees");
+  });
+});
+
+describe("buildPaymentConfirmedMessage (§33)", () => {
+  it("confirms payment with the spec's line-for-line shape", () => {
+    const message = buildPaymentConfirmedMessage({
+      customerName: "Anjali",
+      orderNumber: "SVS-ORD-20261002-00129",
+      totalPaise: 1109600,
+    });
+
+    expect(message).toContain("Payment confirmed ✅");
+    expect(message).toContain("Thank you, Anjali!");
+    expect(message).toContain("Order ID:");
+    expect(message).toContain("SVS-ORD-20261002-00129");
+    expect(message).toContain("Amount received:");
+    expect(message).toContain("₹11,096");
+    expect(message).toContain("Your order is now being prepared.");
+    expect(message).toContain(
+      "We will message you again with tracking details once it is dispatched.",
+    );
+  });
+
+  it("starts with the confirmation line — contrast with the §31 ack", () => {
+    const message = buildPaymentConfirmedMessage({
+      customerName: "Anjali",
+      orderNumber: "SVS-ORD-20261002-00129",
+      totalPaise: 1109600,
+    });
+    expect(message.startsWith("Payment confirmed ✅")).toBe(true);
   });
 });

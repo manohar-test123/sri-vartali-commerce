@@ -4,6 +4,7 @@ import {
   canAdvanceFulfilment,
   canCancel,
   canExtendReservation,
+  canVerifyPayment,
 } from "@/lib/orders/status";
 import { variantLabel } from "@/lib/orders/snapshot";
 
@@ -43,6 +44,22 @@ describe("canExtendReservation (§26)", () => {
     expect(canExtendReservation("CREATED", "PENDING", null)).toBe(false);
     expect(canExtendReservation("CANCELLED", "PENDING", soon)).toBe(false);
     expect(canExtendReservation("CREATED", "VERIFIED", soon)).toBe(false);
+  });
+});
+
+describe("canVerifyPayment (§32)", () => {
+  it("is offered while an open order's payment is unsettled", () => {
+    expect(canVerifyPayment("CREATED", "PENDING")).toBe(true);
+    expect(canVerifyPayment("CREATED", "CUSTOMER_CLAIMS_PAID")).toBe(true);
+    expect(canVerifyPayment("CONFIRMED", "CUSTOMER_CLAIMS_PAID")).toBe(true);
+  });
+
+  it("refuses closed orders and settled payments", () => {
+    expect(canVerifyPayment("CREATED", "VERIFIED")).toBe(false);
+    expect(canVerifyPayment("CREATED", "REJECTED")).toBe(false);
+    expect(canVerifyPayment("CREATED", "REFUNDED")).toBe(false);
+    expect(canVerifyPayment("CANCELLED", "CUSTOMER_CLAIMS_PAID")).toBe(false);
+    expect(canVerifyPayment("COMPLETED", "PENDING")).toBe(false);
   });
 });
 

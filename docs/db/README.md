@@ -14,13 +14,13 @@ Option B — Supabase SQL editor (from any network): paste `schema.sql`, run.
 
 Option C — Supabase CLI / psql directly, when on a network that allows
 outbound 5432/6543 (pooler: `aws-0-ap-south-1.pooler.supabase.com`, session
-mode 5432, user `postgres.khuumibmulaggqddrrtih`):
+mode 5432, user `postgres.khuumibmulagqgdrrtih`):
 
 ```bash
-psql "postgresql://postgres.khuumibmulaggqddrrtih@aws-0-ap-south-1.pooler.supabase.com:5432/postgres" -f docs/db/schema.sql
+psql "postgresql://postgres.khuumibmulagqgdrrtih@aws-0-ap-south-1.pooler.supabase.com:5432/postgres" -f docs/db/schema.sql
 ```
 
-> Project: `khuumibmulaggqddrrtih` (ap-south-1 / Mumbai, Free plan), org
+> Project: `khuumibmulagqgdrrtih` (ap-south-1 / Mumbai, Free plan), org
 > Stonebridge. Status updates are recorded in the operator `AUDITLOG.md`.
 
 ## What v1 encodes

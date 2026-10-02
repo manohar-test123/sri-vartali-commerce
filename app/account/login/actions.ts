@@ -10,6 +10,10 @@ export type LoginActionState = {
   notice?: string;
 };
 
+export type PasswordActionState = {
+  error?: string;
+};
+
 /**
  * Magic-link sign-in (spec §7 /account/login). Sends a one-time link to the
  * email; the verify route exchanges it for a session. No passwords to store.
@@ -40,6 +44,30 @@ export async function requestMagicLink(
   return {
     notice: `Check ${email} for the sign-in link. New here? The same link creates your account.`,
   };
+}
+
+/**
+ * Password sign-in for accounts created directly in the Supabase dashboard
+ * (staff whose inbox cannot take magic links). Establishes the same session
+ * as the magic-link flow.
+ */
+export async function passwordSignIn(
+  _prev: PasswordActionState,
+  formData: FormData,
+): Promise<PasswordActionState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !password) {
+    return { error: "Enter your email and password." };
+  }
+
+  const next = String(formData.get("next") ?? "/account");
+
+  const supabase = await createServerClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { error: "Email or password is incorrect." };
+
+  redirect(next);
 }
 
 export async function signOut() {

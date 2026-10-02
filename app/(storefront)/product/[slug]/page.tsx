@@ -56,9 +56,34 @@ export async function generateMetadata({
     seoTitleOverride: bundle.product.seo_title,
     seoDescriptionOverride: bundle.product.seo_description,
   });
+  // §28: rich WhatsApp/social previews need og:title / og:image /
+  // og:description — the primary product image leads.
+  const primaryImage = bundle.media[0];
   return {
     title: seo.title,
     description: seo.description,
+    openGraph: {
+      title: seo.title,
+      description: seo.description,
+      type: "website",
+      url: `/product/${slug}`,
+      ...(primaryImage
+        ? {
+            images: [
+              {
+                url: primaryImage.url,
+                alt: primaryImage.alt ?? bundle.product.name,
+              },
+            ],
+          }
+        : {}),
+    },
+    twitter: {
+      card: primaryImage ? "summary_large_image" : "summary",
+      title: seo.title,
+      description: seo.description,
+      ...(primaryImage ? { images: [primaryImage.url] } : {}),
+    },
   };
 }
 

@@ -101,6 +101,21 @@ export default async function ClientDashboardPage() {
             Open products →
           </span>
         </Link>
+
+        <Link
+          href="/client/settings"
+          className="group rounded-lg border border-wine-900/20 bg-white p-6 transition-colors hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
+        >
+          <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Settings</p>
+          <h2 className="mt-1 font-serif text-xl text-wine-900">Payment &amp; WhatsApp</h2>
+          <p className="mt-2 text-sm leading-6 text-wine-900/70">
+            UPI ID, QR image and payment instructions for the automatic
+            WhatsApp reply, the store WhatsApp number, and integration status.
+          </p>
+          <span className="mt-4 inline-block text-sm font-medium text-wine-800 underline decoration-gold-400 underline-offset-4 group-hover:text-wine-700">
+            Open settings →
+          </span>
+        </Link>
       </div>
 
       <p className="mt-8 text-xs text-wine-900/50">Signed in: {who}</p>

@@ -40,6 +40,7 @@ import {
 import { normalizeUtrReference } from "@/lib/orders/payment";
 import { normalizeShippingInput } from "@/lib/orders/shipping";
 import { getOrderByNumber } from "@/lib/orders/queries";
+import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
 import {
   buildPaymentConfirmedMessage,
   buildShippedMessage,
@@ -88,6 +89,19 @@ export async function placeOrderAction(
       status: "invalid",
       contactErrors: contactErrors as Record<string, string>,
       addressErrors: addressErrors as Record<string, string>,
+    };
+  }
+
+  // §46 rate limit: every placed order reserves stock — a burst from one
+  // network floods reservations. Counted after validation so typos never
+  // burn the bucket.
+  const orderRate = await checkRateLimit("order_place");
+  if (!orderRate.allowed) {
+    return {
+      status: "error",
+      error: `Too many orders placed from this network ${formatRetryAfter(
+        orderRate.retryAfterSeconds,
+      )}. Message us on WhatsApp if you need help placing another.`,
     };
   }
 

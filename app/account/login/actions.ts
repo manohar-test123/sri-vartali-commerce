@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient as createServerClient } from "@/lib/db/server";
+import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
 
 export type LoginActionState = {
   error?: string;
@@ -25,6 +26,21 @@ export async function requestMagicLink(
   const email = String(formData.get("email") ?? "").trim();
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return { error: "Enter a valid email address." };
+  }
+
+  // §46 rate limits: one bucket per network (brute force) and one per
+  // recipient address (magic-link mail bombing).
+  const [ipLimit, emailLimit] = await Promise.all([
+    checkRateLimit("login_ip"),
+    checkRateLimit("login_email", email),
+  ]);
+  const limited = !ipLimit.allowed ? ipLimit : !emailLimit.allowed ? emailLimit : null;
+  if (limited) {
+    return {
+      error: `Too many sign-in attempts. Please try again ${formatRetryAfter(
+        limited.retryAfterSeconds,
+      )}.`,
+    };
   }
 
   const origin = (await headers()).get("origin");
@@ -59,6 +75,16 @@ export async function passwordSignIn(
   const password = String(formData.get("password") ?? "");
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !password) {
     return { error: "Enter your email and password." };
+  }
+
+  // §46 rate limit: per network — password guessing gets slow fast.
+  const ipLimit = await checkRateLimit("login_ip");
+  if (!ipLimit.allowed) {
+    return {
+      error: `Too many sign-in attempts. Please try again ${formatRetryAfter(
+        ipLimit.retryAfterSeconds,
+      )}.`,
+    };
   }
 
   const next = String(formData.get("next") ?? "/account");

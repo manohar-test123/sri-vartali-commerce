@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 
 import type { ProductMediaRow } from "@/lib/catalog/types";
+import { optimizedImageUrl } from "@/lib/media/optimized-url";
 
 export function ProductGallery({
   media,
@@ -45,8 +46,10 @@ export function ProductGallery({
       <div className="aspect-[3/4] overflow-hidden rounded-2xl bg-wine-900/5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={current.url}
+          src={optimizedImageUrl(current.url, { width: 1100 }) ?? current.url}
           alt={current.alt || productName}
+          fetchPriority="high"
+          decoding="async"
           className="h-full w-full object-cover"
         />
       </div>
@@ -69,7 +72,13 @@ export function ProductGallery({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.url} alt="" className="h-full w-full object-cover" />
+              <img
+                src={optimizedImageUrl(m.url, { width: 160 }) ?? m.url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover"
+              />
             </button>
           ))}
         </div>

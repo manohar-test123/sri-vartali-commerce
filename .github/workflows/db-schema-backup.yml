@@ -1,0 +1,59 @@
+name: Backup DB schema
+
+# Phase 11 backups (spec §46): weekly structural snapshot of the public
+# schema — tables, functions, triggers, RLS policies — as a 90-day Actions
+# artifact. SCHEMA ONLY on purpose: this repo is public, artifacts on
+# public repos are downloadable by anyone, and rows contain customer PII.
+# Row data is covered by Supabase's platform daily backups (see
+# docs/ops/BACKUPS.md for the full posture and restore runbook).
+#
+# Network note: the local dev sandbox blocks Postgres ports, so the dump
+# rides a GitHub-hosted runner against the session pooler — same pattern
+# as the "Apply DB migration" workflow. The password lives only in
+# encrypted Actions secrets.
+
+on:
+  schedule:
+    # Mondays 02:17 UTC (~07:47 IST) — offset from busy :00 slots.
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-schema-backup
+  cancel-in-progress: false
+
+jobs:
+  schema:
+    name: Snapshot public schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PGUSER: postgres.khuumibmulagqgdrrtih
+      PGDATABASE: postgres
+      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Dump schema (resolve pooler host like db-apply)
+        id: dump
+        run: |
+          test -n "$PGPASSWORD" || { echo "SUPABASE_DB_PASSWORD secret is not set"; exit 1; }
+          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          for host in aws-0-ap-south-1.pooler.supabase.com aws-1-ap-south-1.pooler.supabase.com; do
+            echo "probing $host …"
+            if pg_dump "postgresql://$PGUSER@$host:5432/$PGDATABASE" \
+                --schema=public --no-owner --no-privileges -f schema.sql; then
+              echo "dumped via $host"
+              exit 0
+            fi
+          done
+          echo "pg_dump failed on every pooler host"; exit 1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-snapshot-${{ steps.dump.outputs.date }}
+          path: schema.sql
+          retention-days: 90
+          if-no-files-found: error

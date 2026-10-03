@@ -139,8 +139,12 @@ export default async function HomePage() {
             linkLabel="See all"
           />
           <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
-            {newArrivals.map((p) => (
-              <ProductCard key={p.id} product={cardDataFromSummary(p)} />
+            {newArrivals.map((p, i) => (
+              <ProductCard
+                key={p.id}
+                product={cardDataFromSummary(p)}
+                eager={i === 0}
+              />
             ))}
           </div>
         </section>

@@ -22,6 +22,7 @@ import type {
 export interface OrderRow {
   id: string;
   order_number: string;
+  customer_id: string | null;
   customer_name: string;
   phone: string;
   email: string | null;
@@ -150,7 +151,7 @@ export async function getTrackOrderView(
   };
 }
 
-const ORDER_COLUMNS = `id, order_number, customer_name, phone, email,
+const ORDER_COLUMNS = `id, order_number, customer_id, customer_name, phone, email,
   shipping_address_snapshot, subtotal_paise, discount_paise, shipping_paise,
   total_paise, order_status, payment_status, fulfilment_status,
   utr_reference, payment_verified_at,
@@ -303,6 +304,24 @@ export interface DashboardStats {
   }>;
 }
 
+/**
+ * §38 ACTION REQUIRED "Tracking missing": a shipped order only counts as
+ * informed when an order_shipped WhatsApp message reached SENT or beyond —
+ * anything else (QUEUED, FAILED, NOT_CONFIGURED, or never attempted) means
+ * the customer does not have their tracking.
+ */
+const SHIPMENT_INFORMED_STATUSES = ["SENT", "DELIVERED", "READ"];
+
+export function isShipmentInformed(
+  messages: Array<{ template_name: string | null; status: string }>,
+): boolean {
+  return messages.some(
+    (m) =>
+      m.template_name === "order_shipped" &&
+      SHIPMENT_INFORMED_STATUSES.includes(m.status),
+  );
+}
+
 export async function dashboardStats(): Promise<DashboardStats> {
   const admin = createAdminClient();
   const startOfDay = new Date();
@@ -316,6 +335,8 @@ export async function dashboardStats(): Promise<DashboardStats> {
     shipped,
     lowStock,
     claimed,
+    readyToPack,
+    uninformedShipped,
     expiring,
   ] = await Promise.all([
     admin
@@ -352,6 +373,23 @@ export async function dashboardStats(): Promise<DashboardStats> {
     admin
       .from("orders")
       .select("id, order_number")
+      .eq("payment_status", "VERIFIED")
+      .in("fulfilment_status", ["UNFULFILLED", "PROCESSING", "PACKED"])
+      .order("created_at", { ascending: true })
+      .limit(10),
+    admin
+      .from("orders")
+      .select(
+        `id, order_number,
+         whatsapp_messages (template_name, status)`,
+      )
+      .eq("fulfilment_status", "SHIPPED")
+      .neq("order_status", "CANCELLED")
+      .order("created_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("orders")
+      .select("id, order_number")
       .eq("order_status", "CREATED")
       .eq("payment_status", "PENDING")
       .lt("reservation_expires_at", withinHour.toISOString())
@@ -384,6 +422,22 @@ export async function dashboardStats(): Promise<DashboardStats> {
         order_number: (o as { order_number: string }).order_number,
         reason: "Payment claimed",
       })),
+      ...(readyToPack.data ?? []).map((o) => ({
+        id: (o as { id: string }).id,
+        order_number: (o as { order_number: string }).order_number,
+        reason: "Ready to pack",
+      })),
+      ...((uninformedShipped.data ?? []) as unknown as Array<{
+        id: string;
+        order_number: string;
+        whatsapp_messages: Array<{ template_name: string | null; status: string }>;
+      }>)
+        .filter((o) => !isShipmentInformed(o.whatsapp_messages ?? []))
+        .map((o) => ({
+          id: o.id,
+          order_number: o.order_number,
+          reason: "Tracking missing",
+        })),
       ...(expiring.data ?? []).map((o) => ({
         id: (o as { id: string }).id,
         order_number: (o as { order_number: string }).order_number,

@@ -7,6 +7,7 @@ import { ProductCard, cardDataFromSummary } from "@/components/storefront/produc
 import { PinChecker } from "@/components/storefront/pin-checker";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { RecentlyViewed } from "@/components/storefront/recently-viewed";
+import { ReviewForm } from "@/components/storefront/review-form";
 import { WishlistToggle } from "@/components/storefront/wishlist-toggle";
 import { discountPercent, formatPaise } from "@/lib/catalog/money";
 import { effectiveSeo } from "@/lib/catalog/seo";
@@ -387,7 +388,7 @@ export default async function ProductPage({
         <h2 className="font-serif text-2xl text-wine-900">Reviews</h2>
         {bundle.reviews.length === 0 ? (
           <p className="mt-3 text-sm text-wine-900/60">
-            No reviews yet. Verified-buyer reviews open with ordering.
+            No reviews yet. Bought this piece? Share how it was.
           </p>
         ) : (
           <ul className="mt-5 grid gap-6 sm:grid-cols-2">
@@ -409,6 +410,7 @@ export default async function ProductPage({
             ))}
           </ul>
         )}
+        <ReviewForm productId={product.id} />
       </section>
 
       {/* Related */}

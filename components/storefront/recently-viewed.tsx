@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
 import { formatPaise } from "@/lib/catalog/money";
+import { optimizedImageUrl } from "@/lib/media/optimized-url";
 import {
   EMPTY_RECENT,
   getRecentlyViewedSnapshot,
@@ -45,9 +46,10 @@ export function RecentlyViewed({ current }: { current: RecentEntry }) {
                 {e.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={e.imageUrl}
+                    src={optimizedImageUrl(e.imageUrl, { width: 160 }) ?? e.imageUrl}
                     alt=""
                     loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover"
                   />
                 ) : null}

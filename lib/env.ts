@@ -9,9 +9,20 @@
 const optional = (value: string | undefined): string | undefined =>
   value && value.length > 0 ? value : undefined;
 
+/** Vercel provides bare hosts (no scheme) — sitemap/og URLs need https://. */
+const httpsHost = (host: string | undefined): string | undefined =>
+  host ? `https://${host}` : undefined;
+
 export const env = {
+  // Explicit override wins; else the stable production domain Vercel
+  // injects; else the per-deployment host; else local dev. Without this
+  // chain a missing NEXT_PUBLIC_SITE_URL shipped localhost:3000 into
+  // production canonical/og URLs (found during Phase 11 verification).
   siteUrl:
-    optional(process.env.NEXT_PUBLIC_SITE_URL) ?? "http://localhost:3000",
+    optional(process.env.NEXT_PUBLIC_SITE_URL) ??
+    httpsHost(optional(process.env.VERCEL_PROJECT_PRODUCTION_URL)) ??
+    httpsHost(optional(process.env.VERCEL_URL)) ??
+    "http://localhost:3000",
 
   supabase: {
     url: optional(process.env.NEXT_PUBLIC_SUPABASE_URL),

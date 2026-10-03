@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { buildTrackSteps } from "@/lib/orders/shipping";
 import { getTrackOrderView, type TrackOrderView } from "@/lib/orders/queries";
+import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
 
 /**
  * Track order (spec §7 /track-order, §37). A customer enters the order ID
@@ -35,8 +36,16 @@ export default async function TrackOrderPage({ searchParams }: PageProps) {
     phoneInput.trim() !== "";
 
   let result: Awaited<ReturnType<typeof getTrackOrderView>> | null = null;
+  let throttledAfterSeconds = 0;
   if (submitted) {
-    result = await getTrackOrderView(orderInput.trim(), phoneInput.trim());
+    // §46 rate limit: the id/phone pair is the credential — slow down
+    // enumeration before the identical-answer lookup runs.
+    const trackRate = await checkRateLimit("track_order");
+    if (trackRate.allowed) {
+      result = await getTrackOrderView(orderInput.trim(), phoneInput.trim());
+    } else {
+      throttledAfterSeconds = trackRate.retryAfterSeconds;
+    }
   }
 
   return (
@@ -91,6 +100,16 @@ export default async function TrackOrderPage({ searchParams }: PageProps) {
           Track order
         </button>
       </form>
+
+      {submitted && throttledAfterSeconds > 0 ? (
+        <p
+          role="alert"
+          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          Too many tracking lookups from this network. Please try again{" "}
+          {formatRetryAfter(throttledAfterSeconds)}.
+        </p>
+      ) : null}
 
       {submitted && result?.status === "not_found" ? (
         <p

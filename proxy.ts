@@ -2,17 +2,42 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { AppRole } from "@/lib/auth/roles";
+import { buildCsp } from "@/lib/security/csp";
 
 /**
  * Edge gate (Next 16 proxy convention — the renamed middleware).
  *
- * Refreshes the auth session on every matched request and enforces the two
- * staff areas (spec §6/§9): /client needs a client role (or super admin),
- * /admin needs SUPER_ADMIN. When Supabase is not configured, requests pass
- * through and the pages themselves render setup notices.
+ * Two jobs on every page request:
+ *   1. Security (Phase 11, §46): mint a per-request CSP nonce, hand it to
+ *      Next via the request headers (documented mechanism — Next stamps
+ *      its bootstrap scripts with it) and set the policy on the response.
+ *   2. Auth: refresh the session and enforce the two staff areas
+ *      (spec §6/§9): /client needs a client role (or super admin), /admin
+ *      needs SUPER_ADMIN. When Supabase is not configured, requests pass
+ *      through and the pages themselves render setup notices.
  */
+
+const CSP_HEADER = "Content-Security-Policy";
+
+function mintNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
 export default async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const nonce = mintNonce();
+  const csp = buildCsp({
+    nonce,
+    isDev: process.env.NODE_ENV === "development",
+  });
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set(CSP_HEADER, csp);
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set(CSP_HEADER, csp);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -27,10 +52,12 @@ export default async function proxy(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
         );
-        response = NextResponse.next({ request });
+        response = NextResponse.next({ request: { headers: requestHeaders } });
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );
+        // The rebuilt response must keep the policy the first one carried.
+        response.headers.set(CSP_HEADER, csp);
       },
     },
   });
@@ -72,6 +99,8 @@ export default async function proxy(request: NextRequest) {
   return response;
 }
 
+// All page routes (not static assets, not API routes — the webhook's
+// signature check must stay the first thing it does, and JSON needs no CSP).
 export const config = {
-  matcher: ["/client/:path*", "/admin/:path*", "/account/:path*"],
+  matcher: ["/((?!api|_next|favicon.ico|.*\\..*).*)"],
 };

@@ -8,6 +8,7 @@
 import Link from "next/link";
 
 import { WishlistToggle } from "@/components/storefront/wishlist-toggle";
+import { optimizedImageUrl } from "@/lib/media/optimized-url";
 import { discountPercent, formatPaise } from "@/lib/catalog/money";
 import type { Availability } from "@/lib/catalog/types";
 import type { StoreProductSummary } from "@/lib/storefront/types";
@@ -61,9 +62,18 @@ function Stars({ average }: { average: number }) {
   );
 }
 
-export function ProductCard({ product }: { product: ProductCardData }) {
+export function ProductCard({
+  product,
+  eager = false,
+}: {
+  product: ProductCardData;
+  /** First card in the first grid: the LCP candidate — fetch it first. */
+  eager?: boolean;
+}) {
   const discount = discountPercent(product.mrpPaise, product.pricePaise);
   const soldOut = product.availability === "SOLD_OUT";
+  // 3-up mobile grid / 4-up desktop — ~600px covers 2x DPR on the widest.
+  const src = optimizedImageUrl(product.imageUrl, { width: 600 });
 
   return (
     <article className="group relative flex flex-col">
@@ -72,13 +82,14 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         className="relative block aspect-[3/4] overflow-hidden rounded-xl bg-wine-900/5"
         aria-label={product.name}
       >
-        {product.imageUrl ? (
+        {src ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={product.imageUrl}
+              src={src}
               alt={product.imageAlt || product.name}
-              loading="lazy"
+              loading={eager ? "eager" : "lazy"}
+              decoding="async"
               className={`h-full w-full object-cover transition-opacity duration-300 ${
                 product.hoverImageUrl ? "group-hover:opacity-0" : ""
               } ${soldOut ? "opacity-70 saturate-50" : ""}`}
@@ -86,14 +97,14 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             {product.hoverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={product.hoverImageUrl}
+                src={optimizedImageUrl(product.hoverImageUrl, { width: 600 })!}
                 alt=""
                 loading="lazy"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
               />
             ) : null}
-          </>
-        ) : (
+          </>) : (
           <span className="flex h-full items-center justify-center text-xs text-wine-900/40">
             Coming soon
           </span>

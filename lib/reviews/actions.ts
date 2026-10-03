@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/db/admin";
+import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
 import {
   reviewEligibility,
   validateReviewInput,
@@ -49,6 +50,18 @@ export async function submitReviewAction(
   const { errors, rating, phone } = validateReviewInput(input);
   if (Object.keys(errors).length > 0 || rating === null || phone === null) {
     return { status: "invalid", errors: errors as Record<string, string> };
+  }
+
+  // §46 rate limit: the order-id/phone probe surface is public; slow
+  // scripted spam down before it reaches the credential check.
+  const reviewRate = await checkRateLimit("review_submit");
+  if (!reviewRate.allowed) {
+    return {
+      status: "error",
+      error: `Too many reviews submitted from this network ${formatRetryAfter(
+        reviewRate.retryAfterSeconds,
+      )}. Please try again later.`,
+    };
   }
 
   const admin = createAdminClient();

@@ -57,6 +57,16 @@ body {
   color: var(--color-wine-950);
 }
 
+/*
+ * §49 keyboard navigation: one site-wide visible focus state. Components
+ * that style their own focus (inputs swap border color) still read as
+ * focused; everything else gets this gold ring.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-gold-600);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

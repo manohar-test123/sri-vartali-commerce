@@ -136,8 +136,11 @@ export default async function ProductPage({
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <script
         type="application/ld+json"
-        // Product structured data for search engines (§385 SEO direction)
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // Product structured data for search engines (§385 SEO direction).
+        // "<" is escaped so no field value can ever close the tag early.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
       />
 
       <nav aria-label="Breadcrumb" className="mb-6 text-xs text-wine-900/50">

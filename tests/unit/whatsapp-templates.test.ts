@@ -5,6 +5,7 @@ import {
   buildPaidAckMessage,
   buildPaymentConfirmedMessage,
   buildPaymentInstructionsMessage,
+  buildShippedMessage,
   hasQrToSend,
 } from "@/lib/whatsapp/templates";
 
@@ -159,5 +160,63 @@ describe("buildPaymentConfirmedMessage (§33)", () => {
       totalPaise: 1109600,
     });
     expect(message.startsWith("Payment confirmed ✅")).toBe(true);
+  });
+});
+
+describe("buildShippedMessage (§36)", () => {
+  const baseShipment = {
+    orderNumber: "SVS-ORD-20261002-00129",
+    courier: "Delhivery",
+    trackingId: "178921791712",
+    trackingUrl: "https://tracking-url.example",
+    productCount: 3,
+    pieceCount: 4,
+  };
+
+  it("renders the spec's line-for-line shape", () => {
+    const message = buildShippedMessage(baseShipment);
+
+    expect(message).toBe(
+      [
+        "Your Sri Vartali order has been shipped 📦✨",
+        "",
+        "Order ID:",
+        "SVS-ORD-20261002-00129",
+        "",
+        "Courier:",
+        "Delhivery",
+        "",
+        "Tracking ID:",
+        "178921791712",
+        "",
+        "Track your order:",
+        "https://tracking-url.example",
+        "",
+        "Items:",
+        "3 products / 4 pieces",
+        "",
+        "Your order is on its way.",
+        "",
+        "Thank you for shopping with Sri Vartali Sarees ❤️",
+      ].join("\n"),
+    );
+  });
+
+  it("omits the track block entirely when no URL was given", () => {
+    const message = buildShippedMessage({
+      ...baseShipment,
+      trackingUrl: null,
+    });
+    expect(message).not.toContain("Track your order:");
+    expect(message).toContain("Items:\n3 products / 4 pieces");
+  });
+
+  it("pluralizes honestly for single-item orders", () => {
+    const message = buildShippedMessage({
+      ...baseShipment,
+      productCount: 1,
+      pieceCount: 1,
+    });
+    expect(message).toContain("Items:\n1 product / 1 piece");
   });
 });

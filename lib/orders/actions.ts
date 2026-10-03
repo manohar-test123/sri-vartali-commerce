@@ -1,7 +1,8 @@
 "use server";
 
 /**
- * Order mutations (spec §22, §25, §26 — Phase 6; §32/§33 — Phase 8).
+ * Order mutations (spec §22, §25, §26 — Phase 6; §32/§33 — Phase 8;
+ * §35/§36 — Phase 9).
  *
  * placeOrderAction: the §22 pipeline. Steps 1-9 reuse the exact checkout
  * review path (validation + `getCheckoutView` quote); steps 10-16 run
@@ -32,12 +33,17 @@ import {
   canAdvanceFulfilment,
   canCancel,
   canExtendReservation,
+  canMarkShipped,
   canVerifyPayment,
   type FulfilmentStatus,
 } from "@/lib/orders/status";
 import { normalizeUtrReference } from "@/lib/orders/payment";
+import { normalizeShippingInput } from "@/lib/orders/shipping";
 import { getOrderByNumber } from "@/lib/orders/queries";
-import { buildPaymentConfirmedMessage } from "@/lib/whatsapp/templates";
+import {
+  buildPaymentConfirmedMessage,
+  buildShippedMessage,
+} from "@/lib/whatsapp/templates";
 import { sendTextMessage } from "@/lib/whatsapp/send";
 import type { QuoteIssue } from "@/lib/checkout/quote";
 
@@ -424,5 +430,117 @@ export async function verifyPaymentAction(
     message: send.ok
       ? "Payment verified — confirmation sent to the customer."
       : `Payment verified, but the WhatsApp confirmation could not be sent (${send.errorCode}) — see WhatsApp activity.`,
+  };
+}
+
+/** §35/§36: MARK SHIPPED writes the shipments row, flips fulfilment to
+ *  SHIPPED and fulfils inventory (stock leaves the building) atomically in
+ *  the mark_shipped RPC — a double-click or a race with cancel ships
+ *  nothing. The §36 customer notification rides the same logged send path
+ *  as §33: the shipment stands even when Meta is not wired yet. */
+export async function markShippedAction(
+  orderId: string,
+  courierInput: string,
+  trackingIdInput: string,
+  trackingUrlInput = "",
+): Promise<DashboardActionResult> {
+  const denied = await requireClientRole("Mark shipped");
+  if (denied) return { ok: false, error: denied };
+
+  const input = normalizeShippingInput({
+    courier: courierInput,
+    trackingId: trackingIdInput,
+    trackingUrl: trackingUrlInput,
+  });
+  if (!input.ok) return { ok: false, error: input.error };
+
+  const session = await getSession();
+  if (session.status !== "authenticated") {
+    return { ok: false, error: "Mark shipped: sign in required." };
+  }
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select(
+      "id, order_number, order_status, fulfilment_status, phone",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return { ok: false, error: "Order not found." };
+  if (
+    !canMarkShipped(
+      order.order_status as "CREATED",
+      order.fulfilment_status as "UNFULFILLED",
+    )
+  ) {
+    return {
+      ok: false,
+      error:
+        order.fulfilment_status === "SHIPPED" ||
+        order.fulfilment_status === "DELIVERED" ||
+        order.fulfilment_status === "RETURNED"
+          ? "This order has already been shipped."
+          : "This order is closed.",
+    };
+  }
+
+  const { data: shipped, error: rpcError } = await admin.rpc("mark_shipped", {
+    p_order_id: orderId,
+    p_courier: input.value.courier,
+    p_tracking_id: input.value.trackingId,
+    p_tracking_url: input.value.trackingUrl ?? "",
+  });
+  if (rpcError || !shipped?.orderNumber) {
+    const message = rpcError?.message ?? "unknown error";
+    if (message.includes("ALREADY_SHIPPED")) {
+      return { ok: false, error: "This order has already been shipped." };
+    }
+    if (message.includes("ORDER_CLOSED")) {
+      return { ok: false, error: "This order is closed." };
+    }
+    throw new Error(`mark_shipped: ${message}`);
+  }
+
+  // §36 "Items: N products / M pieces" — counted from the persisted lines.
+  const { data: lines, error: linesError } = await admin
+    .from("order_items")
+    .select("quantity")
+    .eq("order_id", orderId);
+  if (linesError) throw new Error(`order_items: ${linesError.message}`);
+  const productCount = lines?.length ?? 0;
+  const pieceCount = (lines ?? []).reduce(
+    (sum, row) => sum + ((row as { quantity: number }).quantity ?? 0),
+    0,
+  );
+
+  await audit(session.user.id, session.user.role, "order.shipped", orderId, {
+    order_number: order.order_number,
+    courier: input.value.courier,
+    tracking_id: input.value.trackingId,
+    tracking_url: input.value.trackingUrl,
+  });
+
+  const send = await sendTextMessage({
+    to: order.phone,
+    body: buildShippedMessage({
+      orderNumber: order.order_number,
+      courier: input.value.courier,
+      trackingId: input.value.trackingId,
+      trackingUrl: input.value.trackingUrl,
+      productCount,
+      pieceCount,
+    }),
+    orderId,
+    templateName: "order_shipped",
+  });
+
+  revalidatePath("/client/orders");
+  revalidatePath(`/client/orders/${orderId}`);
+  return {
+    ok: true,
+    message: send.ok
+      ? `Shipped via ${input.value.courier} — tracking details sent to the customer.`
+      : `Shipped via ${input.value.courier}, but the WhatsApp notification could not be sent (${send.errorCode}) — see WhatsApp activity.`,
   };
 }

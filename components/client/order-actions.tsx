@@ -5,8 +5,9 @@
  * reservation), extend reservation, advance fulfilment (PROCESSING /
  * PACKED). Phase 8 adds the §32 payment block: current status, optional
  * UTR / reference, and VERIFY PAYMENT — the only path to payment_status =
- * VERIFIED. Courier / tracking / shipped stay reserved for the shipping
- * phase; the disabled block keeps the panel shaped like the spec.
+ * VERIFIED. Phase 9 adds the §35 shipping block: courier, tracking ID,
+ * optional tracking URL and MARK SHIPPED, which also fulfils inventory and
+ * sends the §36 customer notification.
  */
 
 import { useRouter } from "next/navigation";
@@ -16,6 +17,7 @@ import {
   advanceFulfilmentAction,
   cancelOrderAction,
   extendReservationAction,
+  markShippedAction,
   verifyPaymentAction,
 } from "@/lib/orders/actions";
 import type {
@@ -27,9 +29,17 @@ import {
   canAdvanceFulfilment,
   canCancel,
   canExtendReservation,
+  canMarkShipped,
   canVerifyPayment,
   PAYMENT_STATUS_LABELS,
 } from "@/lib/orders/status";
+
+interface ShipmentSummary {
+  courier: string;
+  trackingId: string;
+  trackingUrl: string | null;
+  shippedAt: string;
+}
 
 interface OrderActionsProps {
   orderId: string;
@@ -40,6 +50,7 @@ interface OrderActionsProps {
   paymentVerifiedAt: string | null;
   utrReference: string | null;
   reservationExpiresAt: string | null;
+  shipment: ShipmentSummary | null;
 }
 
 const buttonBase =
@@ -47,6 +58,9 @@ const buttonBase =
 const primary = `${buttonBase} bg-wine-900 text-ivory-50 hover:bg-wine-800`;
 const secondary = `${buttonBase} border border-wine-900/30 text-wine-900 hover:bg-white`;
 const danger = `${buttonBase} border border-red-300 text-red-800 hover:bg-red-50`;
+const inputClass =
+  "mt-1 w-full rounded-lg border border-wine-900/20 bg-white px-3 py-2 text-sm text-wine-900 placeholder:text-wine-900/30 focus:border-wine-900/50 focus:outline-none";
+const labelClass = "block text-xs text-wine-900/60";
 
 export function OrderActionsPanel({
   orderId,
@@ -57,12 +71,16 @@ export function OrderActionsPanel({
   paymentVerifiedAt,
   utrReference,
   reservationExpiresAt,
+  shipment,
 }: OrderActionsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [utr, setUtr] = useState("");
+  const [courier, setCourier] = useState("");
+  const [trackingId, setTrackingId] = useState("");
+  const [trackingUrl, setTrackingUrl] = useState("");
 
   function run(fn: () => Promise<{ ok: true; message: string | null } | { ok: false; error: string }>) {
     setMessage(null);
@@ -81,6 +99,7 @@ export function OrderActionsPanel({
   const cancellable = canCancel(orderStatus, paymentStatus);
   const extensible = canExtendReservation(orderStatus, paymentStatus, reservationExpiresAt);
   const verifiable = canVerifyPayment(orderStatus, paymentStatus);
+  const shippable = canMarkShipped(orderStatus, fulfilmentStatus);
   const closed = orderStatus === "CANCELLED" || orderStatus === "COMPLETED";
   const nextFulfilment: FulfilmentStatus | null = closed
     ? null
@@ -124,7 +143,7 @@ export function OrderActionsPanel({
           <div className="mt-3">
             <label
               htmlFor="utr-reference"
-              className="block text-xs text-wine-900/60"
+              className={labelClass}
             >
               Optional UTR / Reference
             </label>
@@ -137,7 +156,7 @@ export function OrderActionsPanel({
               value={utr}
               maxLength={40}
               placeholder="e.g. 402912345678"
-              className="mt-1 w-full rounded-lg border border-wine-900/20 bg-white px-3 py-2 text-sm text-wine-900 placeholder:text-wine-900/30 focus:border-wine-900/50 focus:outline-none"
+              className={inputClass}
               disabled={pending}
               onChange={(event) => setUtr(event.target.value)}
             />
@@ -160,6 +179,115 @@ export function OrderActionsPanel({
                 })}`
               : ""}
             {utrReference ? ` · UTR ${utrReference}` : ""}
+          </p>
+        ) : null}
+      </div>
+
+      {/* §35 shipping block — inputs while the order is still pre-shipping,
+          read-only summary once it has left. */}
+      <div className="mt-4 rounded-xl border border-wine-900/15 bg-wine-900/[0.03] p-4">
+        <h3 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+          Shipping
+        </h3>
+
+        {shippable ? (
+          <div className="mt-3">
+            <label htmlFor="courier" className={labelClass}>
+              Courier
+            </label>
+            <input
+              id="courier"
+              name="courier"
+              type="text"
+              autoComplete="off"
+              value={courier}
+              maxLength={60}
+              placeholder="e.g. Delhivery"
+              className={inputClass}
+              disabled={pending}
+              onChange={(event) => setCourier(event.target.value)}
+            />
+            <label htmlFor="tracking-id" className={`${labelClass} mt-3`}>
+              Tracking ID
+            </label>
+            <input
+              id="tracking-id"
+              name="tracking-id"
+              type="text"
+              autoComplete="off"
+              value={trackingId}
+              maxLength={64}
+              placeholder="e.g. 178921791712"
+              className={inputClass}
+              disabled={pending}
+              onChange={(event) => setTrackingId(event.target.value)}
+            />
+            <label htmlFor="tracking-url" className={`${labelClass} mt-3`}>
+              Tracking URL (optional)
+            </label>
+            <input
+              id="tracking-url"
+              name="tracking-url"
+              type="url"
+              autoComplete="off"
+              value={trackingUrl}
+              maxLength={300}
+              placeholder="https://…"
+              className={inputClass}
+              disabled={pending}
+              onChange={(event) => setTrackingUrl(event.target.value)}
+            />
+            <button
+              type="button"
+              className={`${primary} mt-3 w-full`}
+              disabled={pending}
+              onClick={() =>
+                run(() =>
+                  markShippedAction(orderId, courier, trackingId, trackingUrl),
+                )
+              }
+            >
+              Mark shipped
+            </button>
+            <p className="mt-2 text-xs leading-5 text-wine-900/50">
+              Ships the order, moves its stock out of reserved inventory and
+              notifies the customer on WhatsApp.
+            </p>
+          </div>
+        ) : shipment ? (
+          <div className="mt-2 space-y-1 text-sm text-wine-900/80">
+            <p>
+              Shipped via{" "}
+              <span className="font-medium text-wine-900">
+                {shipment.courier}
+              </span>
+              {shipment.shippedAt
+                ? ` · ${new Date(shipment.shippedAt).toLocaleString("en-IN", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}`
+                : ""}
+            </p>
+            <p>
+              Tracking ID:{" "}
+              <span className="font-medium text-wine-900">
+                {shipment.trackingId}
+              </span>
+            </p>
+            {shipment.trackingUrl ? (
+              <a
+                href={shipment.trackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs font-medium text-wine-900 underline underline-offset-2"
+              >
+                Open courier tracking ↗
+              </a>
+            ) : null}
+          </div>
+        ) : closed ? (
+          <p className="mt-2 text-sm text-wine-900/50">
+            This order is closed — nothing left to ship.
           </p>
         ) : null}
       </div>
@@ -203,14 +331,6 @@ export function OrderActionsPanel({
             Cancel order
           </button>
         ) : null}
-      </div>
-
-      <div className="mt-6 space-y-3 border-t border-dashed border-wine-900/20 pt-4 text-sm text-wine-900/50">
-        <p>
-          <strong className="font-medium text-wine-900/70">Mark shipped</strong>{" "}
-          — courier, tracking ID and shipping messages arrive with the
-          shipping update.
-        </p>
       </div>
     </section>
   );

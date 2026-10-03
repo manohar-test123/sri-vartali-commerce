@@ -11,6 +11,7 @@
  */
 
 import { createAdminClient } from "@/lib/db/admin";
+import { normalizeIndianPhone } from "@/lib/checkout/address";
 import type { AddressInput } from "@/lib/checkout/address";
 import type {
   FulfilmentStatus,
@@ -60,6 +61,93 @@ export interface OrderItemRow {
 export interface OrderWithItems {
   order: OrderRow;
   items: OrderItemRow[];
+}
+
+/** §35 shipments row as the app reads it. */
+export interface ShipmentRow {
+  id: string;
+  order_id: string;
+  courier: string;
+  tracking_id: string;
+  tracking_url: string | null;
+  status: "SHIPPED" | "IN_TRANSIT" | "DELIVERED" | "RETURNED";
+  shipped_at: string;
+  delivered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const SHIPMENT_COLUMNS = `id, order_id, courier, tracking_id, tracking_url,
+  status, shipped_at, delivered_at, created_at, updated_at`;
+
+/** Latest shipment for an order (§35) — one live shipment per order in the
+ *  current model; re-ship after a return is a later phase. */
+export async function getLatestShipment(
+  orderId: string,
+): Promise<ShipmentRow | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("shipments")
+    .select(SHIPMENT_COLUMNS)
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`shipments: ${error.message}`);
+  return (data as ShipmentRow | null) ?? null;
+}
+
+export interface TrackOrderView {
+  order_number: string;
+  order_status: OrderStatus;
+  payment_status: PaymentStatus;
+  fulfilment_status: FulfilmentStatus;
+  created_at: string;
+  shipment: ShipmentRow | null;
+}
+
+export type TrackOrderResult =
+  | { status: "not_found" }
+  | { status: "found"; view: TrackOrderView };
+
+/**
+ * §37 track-order lookup: order number + the phone used at checkout. A
+ * miss and a phone mismatch answer identically ("not_found") so the page
+ * never confirms whether an order number exists — the sequential SVS-ORD
+ * codes are guessable, the phone is the secret. Anonymous access rides the
+ * admin client server-side, same as the public order page.
+ */
+export async function getTrackOrderView(
+  orderNumber: string,
+  phone: string,
+): Promise<TrackOrderResult> {
+  await sweepExpiredReservations();
+  const normalized = normalizeIndianPhone(phone);
+  if (!normalized) return { status: "not_found" };
+
+  const admin = createAdminClient();
+  const { data: order, error } = await admin
+    .from("orders")
+    .select(
+      `id, order_number, phone, order_status, payment_status,
+       fulfilment_status, created_at`,
+    )
+    .eq("order_number", orderNumber)
+    .maybeSingle();
+  if (error) throw new Error(`track order: ${error.message}`);
+  if (!order || order.phone !== normalized) return { status: "not_found" };
+
+  return {
+    status: "found",
+    view: {
+      order_number: order.order_number,
+      order_status: order.order_status as OrderStatus,
+      payment_status: order.payment_status as PaymentStatus,
+      fulfilment_status: order.fulfilment_status as FulfilmentStatus,
+      created_at: order.created_at,
+      shipment: await getLatestShipment(order.id),
+    },
+  };
 }
 
 const ORDER_COLUMNS = `id, order_number, customer_name, phone, email,

@@ -101,6 +101,11 @@ export function SiteHeader({
               Track order
             </Link>
           </li>
+          <li>
+            <Link href="/account" className="whitespace-nowrap hover:underline">
+              Account
+            </Link>
+          </li>
         </ul>
       </nav>
     </header>

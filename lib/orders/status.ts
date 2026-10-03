@@ -72,6 +72,24 @@ export function canVerifyPayment(
   );
 }
 
+/** §34/§35: MARK SHIPPED is offered on any open order that has not left
+ *  the building yet. Forward-only like the pre-shipping ladder — a packed
+ *  order ships, a shipped one cannot ship again (returns are a later
+ *  phase). Payment is deliberately not a gate: shipping an unverified
+ *  order stays the owner's explicit call at the panel. */
+export function canMarkShipped(
+  orderStatus: OrderStatus,
+  fulfilmentStatus: FulfilmentStatus,
+): boolean {
+  return (
+    orderStatus !== "CANCELLED" &&
+    orderStatus !== "COMPLETED" &&
+    (fulfilmentStatus === "UNFULFILLED" ||
+      fulfilmentStatus === "PROCESSING" ||
+      fulfilmentStatus === "PACKED")
+  );
+}
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   CREATED: "Created",
   CONFIRMED: "Confirmed",

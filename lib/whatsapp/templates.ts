@@ -126,3 +126,48 @@ export function buildPaymentConfirmedMessage(
     "We will message you again with tracking details once it is dispatched.",
   ].join("\n");
 }
+
+/**
+ * §36 shipping notification — sent when the client clicks MARK SHIPPED
+ * (§35 row written first, message second, same logged send path as §33).
+ * The tracking URL is optional: without one the "Track your order" block
+ * is omitted rather than sending a dead line. The spec's template CTA
+ * (TRACK ORDER button) needs a pre-approved Meta template — the plain
+ * text link carries the same affordance until Meta is wired.
+ */
+export function buildShippedMessage(
+  input: {
+    orderNumber: string;
+    courier: string;
+    trackingId: string;
+    trackingUrl: string | null;
+    productCount: number;
+    pieceCount: number;
+  },
+): string {
+  const lines: string[] = [
+    "Your Sri Vartali order has been shipped 📦✨",
+    "",
+    "Order ID:",
+    input.orderNumber,
+    "",
+    "Courier:",
+    input.courier,
+    "",
+    "Tracking ID:",
+    input.trackingId,
+  ];
+  if (input.trackingUrl) {
+    lines.push("", "Track your order:", input.trackingUrl);
+  }
+  lines.push(
+    "",
+    "Items:",
+    `${input.productCount} ${input.productCount === 1 ? "product" : "products"} / ${input.pieceCount} ${input.pieceCount === 1 ? "piece" : "pieces"}`,
+    "",
+    "Your order is on its way.",
+    "",
+    "Thank you for shopping with Sri Vartali Sarees ❤️",
+  );
+  return lines.join("\n");
+}

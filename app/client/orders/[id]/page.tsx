@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 
 import { OrderActionsPanel } from "@/components/client/order-actions";
 import { formatPaise } from "@/lib/catalog/money";
-import { getOrderById, listOrderHistory } from "@/lib/orders/queries";
+import {
+  getOrderById,
+  getLatestShipment,
+  listOrderHistory,
+} from "@/lib/orders/queries";
 import { listMessagesForOrder } from "@/lib/whatsapp/queries";
 import {
   FULFILMENT_STATUS_CLASSES,
@@ -42,6 +46,7 @@ export default async function ClientOrderDetailPage({
   const { order, items } = found;
   const history = await listOrderHistory(order.id);
   const whatsappLog = await listMessagesForOrder(order.id);
+  const shipment = await getLatestShipment(order.id);
   const address = order.shipping_address_snapshot;
 
   return (
@@ -255,6 +260,16 @@ export default async function ClientOrderDetailPage({
             paymentVerifiedAt={order.payment_verified_at}
             utrReference={order.utr_reference}
             reservationExpiresAt={order.reservation_expires_at}
+            shipment={
+              shipment
+                ? {
+                    courier: shipment.courier,
+                    trackingId: shipment.tracking_id,
+                    trackingUrl: shipment.tracking_url,
+                    shippedAt: shipment.shipped_at,
+                  }
+                : null
+            }
           />
         </div>
       </div>

@@ -8,7 +8,10 @@
 import Link from "next/link";
 
 import { WishlistToggle } from "@/components/storefront/wishlist-toggle";
-import { optimizedImageUrl } from "@/lib/media/optimized-url";
+import {
+  optimizedImageUrl,
+  responsiveImageSrcSet,
+} from "@/lib/media/optimized-url";
 import { discountPercent, formatPaise } from "@/lib/catalog/money";
 import type { Availability } from "@/lib/catalog/types";
 import type { StoreProductSummary } from "@/lib/storefront/types";
@@ -72,8 +75,11 @@ export function ProductCard({
 }) {
   const discount = discountPercent(product.mrpPaise, product.pricePaise);
   const soldOut = product.availability === "SOLD_OUT";
-  // 3-up mobile grid / 4-up desktop — ~600px covers 2x DPR on the widest.
+  // §47 responsive sizes: grid is 2-up mobile / 3-up sm / 4-up lg (see
+  // ProductGrid) — each viewport fetches only the derivative it lays out.
   const src = optimizedImageUrl(product.imageUrl, { width: 600 });
+  const srcSet = responsiveImageSrcSet(product.imageUrl, [400, 600, 800]);
+  const sizes = "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
 
   return (
     <article className="group relative flex flex-col">
@@ -86,7 +92,9 @@ export function ProductCard({
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={src}
+              src={src ?? undefined}
+              srcSet={srcSet ?? undefined}
+              sizes={sizes}
               alt={product.imageAlt || product.name}
               loading={eager ? "eager" : "lazy"}
               decoding="async"
@@ -98,6 +106,8 @@ export function ProductCard({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={optimizedImageUrl(product.hoverImageUrl, { width: 600 })!}
+                srcSet={responsiveImageSrcSet(product.hoverImageUrl, [400, 600, 800]) ?? undefined}
+                sizes={sizes}
                 alt=""
                 loading="lazy"
                 decoding="async"

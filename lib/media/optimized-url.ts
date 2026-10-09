@@ -43,3 +43,27 @@ export function optimizedImageUrl(
   parsed.pathname = `${before}f_auto,q_auto,w_${width}/${after}`;
   return parsed.toString();
 }
+
+/**
+ * `srcset` candidates for one image across layout widths (§47 responsive
+ * image sizes): `"<url w400> 400w, <url w600> 600w, …` for use with a
+ * `sizes` attribute, so phones fetch a small derivative and desktops a
+ * large one instead of everyone paying for the widest.
+ *
+ * Returns null when there is nothing to tailor (no image, or a host we
+ * can't transform — a srcset of identical URLs would just waste header
+ * bytes; the plain `src` already covers it).
+ */
+export function responsiveImageSrcSet(
+  url: string | null | undefined,
+  widths: readonly number[],
+): string | null {
+  if (!url || widths.length === 0) return null;
+
+  const first = optimizedImageUrl(url, { width: widths[0] });
+  if (first === null || first === url) return null; // not transformable
+
+  return widths
+    .map((w) => `${optimizedImageUrl(url, { width: w })} ${w}w`)
+    .join(", ");
+}

@@ -168,6 +168,40 @@ export function AddToCart({ variants }: { variants: AddableVariant[] }) {
           ) : null}
         </p>
       ) : null}
+
+      {/* §48 sticky purchase bar: on mobile the inline block scrolls away on
+          long product pages — the order actions stay one tap away. Mirrors
+          the same handlers; hidden from sm up where the inline row serves.
+          The spacer reserves the bar's height in the flow so the page footer
+          is never permanently obscured. */}
+      <div className="h-14 sm:hidden" aria-hidden />
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-wine-900/10 bg-ivory-50/95 px-4 py-2.5 backdrop-blur sm:hidden">
+        <div className="mx-auto flex max-w-6xl items-center gap-3">
+          <span
+            className="min-w-0 flex-1 truncate text-sm font-semibold text-wine-900"
+            aria-hidden
+          >
+            {selected?.priceLabel ?? (soldOut ? "Sold out" : "")}
+            {selected && maxQty > 0 ? ` · ${maxQty} available` : ""}
+          </span>
+          <button
+            type="button"
+            disabled={soldOut || pending}
+            onClick={handleAdd}
+            className="rounded-full border border-wine-900 px-4 py-2 text-sm font-medium text-wine-900 transition-colors hover:bg-wine-900 hover:text-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {pending ? "Adding…" : "Add to Cart"}
+          </button>
+          <button
+            type="button"
+            disabled={soldOut || pending}
+            onClick={handleBuyNow}
+            className="rounded-full bg-gold-500 px-4 py-2 text-sm font-semibold text-wine-900 transition-colors hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Buy Now
+          </button>
+        </div>
+      </div>
     </section>
   );
 }

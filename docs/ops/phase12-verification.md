@@ -17,6 +17,11 @@ Capture a screenshot or note per ✅ and attach it to PR #26.
   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
   `SUPABASE_SERVICE_ROLE_KEY` (the legacy `eyJ…` service JWT, **not**
   `sb_secret_…`).
+- **Where the env lives:** the canonical `.env.local` is in the owner's
+  (ManoharPaturi's) local workspace — `~/Desktop/Stonebridge/sri_vartali_sarees/`
+  — and is owner-transferred only (never chat, never committed). This
+  runbook is therefore most naturally run **by the owner on that machine**;
+  anyone else needs the file transferred to them first.
 - The database is the **production** project — every artifact created
    below is real data and gets cleaned up in step 6.
 - `admin1@svs.local` is SUPER_ADMIN (bootstrapped 2026-10-09, audit row

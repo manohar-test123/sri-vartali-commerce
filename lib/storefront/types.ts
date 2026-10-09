@@ -43,6 +43,8 @@ export interface StoreProductSummary {
   attributes: AttributeValues;
   /** Collection slugs this product belongs to (§41). */
   collectionSlugs: string[];
+  /** Collection names (§40 free-text search matches them). */
+  collectionNames: string[];
   /** Approved-review aggregate; null when the product has no reviews yet. */
   rating: { average: number; count: number } | null;
 }
@@ -60,6 +62,12 @@ export interface CatalogFilters {
   occasions: string[];
   /** Matches `fabric` OR `material` attribute values. */
   fabrics: string[];
+  /**
+   * Schema-driven facets (§40 "category-specific filters"): attribute key →
+   * selected values, parsed from `f_<key>` params. Keys beyond the three
+   * fixed dimensions above; only schema-declared filterable keys are kept.
+   */
+  attributeFilters: Record<string, string[]>;
   /** Rupee bounds parsed to paise; null = unbounded. */
   minPricePaise: number | null;
   maxPricePaise: number | null;

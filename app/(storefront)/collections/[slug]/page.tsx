@@ -55,7 +55,7 @@ export default async function CollectionPage({
       <CatalogView
         basePath={`/collections/${slug}`}
         params={search}
-        scope={{ collectionSlug: slug }}
+        scope={{ collectionSlug: slug, lockedCollection: true }}
       />
     </>
   );

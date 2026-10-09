@@ -9,6 +9,9 @@
  */
 
 import type {
+  CategoryAttributeSchema,
+} from "@/lib/catalog/types";
+import type {
   CatalogFilters,
   CatalogSort,
   StoreProductSummary,
@@ -22,6 +25,20 @@ export interface CategoryNode {
   slug: string;
   parentId: string | null;
   position: number;
+  /** The category's attribute_schema — drives schema-driven facets (§40). */
+  attributeSchema: CategoryAttributeSchema;
+}
+
+/** Param prefix for schema-driven attribute facets (`f_weave=…`). */
+const ATTRIBUTE_PARAM_PREFIX = "f_";
+
+/** Fixed §40 dimensions already rendered as their own facet groups. */
+const FIXED_FACET_KEYS = new Set(["color", "occasion", "fabric", "material"]);
+
+/** One schema-driven facet group definition (§40 category-specific filters). */
+export interface AttributeFacetField {
+  key: string;
+  label: string;
 }
 
 const SORTS: CatalogSort[] = ["newest", "price_asc", "price_desc", "name"];
@@ -46,12 +63,29 @@ function rupeesToPaise(value: string | undefined): number | null {
   return paise > 0 ? paise : null;
 }
 
-/** `?color=Wine&color=Ivory&sort=price_asc` → typed filters. */
+/**
+ * `?color=Wine&color=Ivory&sort=price_asc&f_weave=Kanchipuram` → typed
+ * filters. `attributeKeys`, when given, restricts which `f_<key>` params
+ * survive (the caller passes the schema-declared filterable keys, so stale
+ * or hand-crafted URLs never invent filter dimensions).
+ */
 export function parseFilters(
   params: Record<string, string | string[] | undefined>,
+  options: { attributeKeys?: string[] } = {},
 ): CatalogFilters {
   const sortRaw = first(params.sort) as CatalogSort | undefined;
   const pageRaw = Number(first(params.page) ?? "1");
+  const allowed = options.attributeKeys
+    ? new Set(options.attributeKeys)
+    : null;
+  const attributeFilters: Record<string, string[]> = {};
+  for (const [param, value] of Object.entries(params)) {
+    if (!param.startsWith(ATTRIBUTE_PARAM_PREFIX)) continue;
+    const key = param.slice(ATTRIBUTE_PARAM_PREFIX.length);
+    if (key === "" || (allowed !== null && !allowed.has(key))) continue;
+    const values = list(value);
+    if (values.length > 0) attributeFilters[key] = values;
+  }
   return {
     q: (first(params.q) ?? "").trim().slice(0, 120),
     categorySlug: first(params.category)?.trim() || null,
@@ -59,12 +93,26 @@ export function parseFilters(
     colors: list(params.color),
     occasions: list(params.occasion),
     fabrics: list(params.fabric),
+    attributeFilters,
     minPricePaise: rupeesToPaise(first(params.min)),
     maxPricePaise: rupeesToPaise(first(params.max)),
     inStockOnly: first(params.stock) === "in_stock",
     sort: sortRaw && SORTS.includes(sortRaw) ? sortRaw : "newest",
     page: Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1,
   };
+}
+
+/** Drop attribute-filter keys outside the given set (stale URLs). */
+export function pruneAttributeFilters(
+  filters: CatalogFilters,
+  keys: string[],
+): CatalogFilters {
+  const allowed = new Set(keys);
+  const kept: Record<string, string[]> = {};
+  for (const [key, values] of Object.entries(filters.attributeFilters)) {
+    if (allowed.has(key) && values.length > 0) kept[key] = values;
+  }
+  return { ...filters, attributeFilters: kept };
 }
 
 /** Serialize filters to a query string, applying a partial override. */
@@ -80,6 +128,12 @@ export function buildQuery(
   for (const c of f.colors) params.append("color", c);
   for (const o of f.occasions) params.append("occasion", o);
   for (const b of f.fabrics) params.append("fabric", b);
+  // sorted keys keep canonical URLs stable regardless of insertion order
+  for (const key of Object.keys(f.attributeFilters).sort()) {
+    for (const v of f.attributeFilters[key]) {
+      params.append(`${ATTRIBUTE_PARAM_PREFIX}${key}`, v);
+    }
+  }
   if (f.minPricePaise !== null) params.set("min", String(f.minPricePaise / 100));
   if (f.maxPricePaise !== null) params.set("max", String(f.maxPricePaise / 100));
   if (f.inStockOnly) params.set("stock", "in_stock");
@@ -124,7 +178,8 @@ function attributeValues(p: StoreProductSummary): string[] {
   );
 }
 
-/** §40 free text: name, product ID, SKU, category, fabric/color/occasion. */
+/** §40 free text: name, product ID, SKU, category, fabric/color/occasion,
+ *  collection name. */
 export function matchesQuery(p: StoreProductSummary, q: string): boolean {
   const tokens = q.toLowerCase().split(/\s+/).filter((t) => t !== "");
   if (tokens.length === 0) return true;
@@ -136,6 +191,7 @@ export function matchesQuery(p: StoreProductSummary, q: string): boolean {
     ...p.skus,
     ...attributeValues(p),
     ...p.collectionSlugs,
+    ...p.collectionNames,
   ]
     .join(" ")
     .toLowerCase();
@@ -176,6 +232,14 @@ export function filterProducts(
       !filters.fabrics.some((f) => f === p.materialLabel || f === fabric)
     ) {
       return false;
+    }
+    // Schema-driven facets (§40): OR within a key, AND across keys. A
+    // product without the attribute (other category) never matches; boolean
+    // values are not facet values by design.
+    for (const [key, values] of Object.entries(filters.attributeFilters)) {
+      if (values.length === 0) continue;
+      const value = p.attributes[key];
+      if (typeof value !== "string" || !values.includes(value)) return false;
     }
     if (filters.minPricePaise !== null && p.pricePaise < filters.minPricePaise) {
       return false;
@@ -241,6 +305,39 @@ export function distinctAttributeValues(
     }
   }
   return [...seen].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * §40 category-specific facet fields: the `filterable` string fields of the
+ * categories in scope (a subtree when `scopeSlugs` is given, all categories
+ * when null), minus the fixed colour/occasion/fabric dimensions. First
+ * declaration wins on key collisions (categories are ordered by position),
+ * so a weave field declared on Sarees keeps its label everywhere.
+ */
+export function schemaFacetFields(
+  categories: CategoryNode[],
+  scopeSlugs: Set<string> | null,
+): AttributeFacetField[] {
+  const inScope = scopeSlugs
+    ? categories.filter((c) => scopeSlugs.has(c.slug))
+    : categories;
+  const fields: AttributeFacetField[] = [];
+  const seen = new Set<string>();
+  for (const category of inScope) {
+    for (const field of category.attributeSchema) {
+      if (
+        field.type === "boolean" ||
+        !field.filterable ||
+        FIXED_FACET_KEYS.has(field.key) ||
+        seen.has(field.key)
+      ) {
+        continue;
+      }
+      seen.add(field.key);
+      fields.push({ key: field.key, label: field.label });
+    }
+  }
+  return fields;
 }
 
 export { toggleValue };

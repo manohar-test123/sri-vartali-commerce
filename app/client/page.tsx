@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { OrdersLive } from "@/components/client/orders-live";
 import { getSession } from "@/lib/auth/session";
 import { dashboardStats } from "@/lib/orders/queries";
 
@@ -154,6 +155,9 @@ export default async function ClientDashboardPage() {
       </nav>
 
       <p className="mt-8 text-xs text-wine-900/50">Signed in: {who}</p>
+
+      {/* §39: live order/status updates while this page is open. */}
+      <OrdersLive />
     </DashboardShell>
   );
 }

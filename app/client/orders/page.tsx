@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { OrdersLive } from "@/components/client/orders-live";
 import { formatPaise } from "@/lib/catalog/money";
 import { listOrders, type OrderListFilter } from "@/lib/orders/queries";
 import {
@@ -136,6 +137,9 @@ export default async function ClientOrdersPage({
           ))}
         </ul>
       )}
+
+      {/* §39: live order/status updates while this page is open. */}
+      <OrdersLive />
     </div>
   );
 }

@@ -133,6 +133,26 @@ export default async function ClientDashboardPage() {
         </Link>
       </div>
 
+      <nav aria-label="Catalog and order management" className="mt-6 flex flex-wrap gap-2 text-sm">
+        {(
+          [
+            ["/client/categories", "Categories"],
+            ["/client/collections", "Collections"],
+            ["/client/inventory", "Inventory"],
+            ["/client/customers", "Customers"],
+            ["/client/shipping", "Shipping"],
+          ] as const
+        ).map(([href, label]) => (
+          <Link
+            key={href}
+            href={href}
+            className="rounded-full border border-wine-900/20 bg-white px-4 py-1.5 text-wine-900/70 transition-colors hover:border-gold-400 hover:text-wine-900"
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+
       <p className="mt-8 text-xs text-wine-900/50">Signed in: {who}</p>
     </DashboardShell>
   );

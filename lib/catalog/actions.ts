@@ -163,7 +163,7 @@ export async function updateProduct(
 
   const { data: current } = await supabase
     .from("products")
-    .select("id, status, category_id, name")
+    .select("*")
     .eq("id", productId)
     .single();
   if (!current) return fail("Product not found.");
@@ -230,6 +230,22 @@ export async function updateProduct(
   if (patch.returnEligible !== undefined) update.return_eligible = patch.returnEligible;
   if (patch.shippingNotes !== undefined) {
     update.shipping_notes = patch.shippingNotes?.trim() || null;
+  }
+
+  // The wizard autosaves the whole form; prune fields whose values did not
+  // change so the touch_updated_at trigger only fires on real edits —
+  // otherwise updated_at (and the product list ordering) drifts on idle
+  // saves. Objects (attributes) compare via stable JSON of compacted values.
+  const currentRow = current as unknown as Record<string, unknown>;
+  const unchanged = (key: string, value: unknown): boolean =>
+    value === currentRow[key] ||
+    (value !== null &&
+      currentRow[key] !== null &&
+      typeof value === "object" &&
+      typeof currentRow[key] === "object" &&
+      JSON.stringify(value) === JSON.stringify(currentRow[key]));
+  for (const key of Object.keys(update)) {
+    if (unchanged(key, update[key])) delete update[key];
   }
 
   if (Object.keys(update).length === 0) return { ok: true };

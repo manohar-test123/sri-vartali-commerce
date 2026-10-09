@@ -8,6 +8,8 @@ import {
   matchesQuery,
   paginate,
   parseFilters,
+  pruneAttributeFilters,
+  schemaFacetFields,
   sortProducts,
 } from "@/lib/storefront/search";
 import type { CategoryNode } from "@/lib/storefront/search";
@@ -34,6 +36,7 @@ function product(
     publishedAt: "2026-10-01T00:00:00Z",
     attributes: { color: "Wine", fabric: "Silk", occasion: "Wedding" },
     collectionSlugs: ["festive-edit"],
+    collectionNames: ["Festive Edit"],
     rating: null,
     ...overrides,
   };
@@ -45,6 +48,13 @@ const products: StoreProductSummary[] = [
     slug: "wine-silk-saree",
     name: "Wine Silk Saree",
     pricePaise: 1850000,
+    attributes: {
+      color: "Wine",
+      fabric: "Silk",
+      occasion: "Wedding",
+      weave: "Banarasi",
+      blouse_included: true,
+    },
     publishedAt: "2026-10-02T00:00:00Z",
   }),
   product({
@@ -58,6 +68,7 @@ const products: StoreProductSummary[] = [
     categorySlug: "kurtis",
     categoryName: "Kurtis",
     collectionSlugs: [],
+    collectionNames: [],
     publishedAt: "2026-09-20T00:00:00Z",
   }),
   product({
@@ -65,21 +76,68 @@ const products: StoreProductSummary[] = [
     slug: "sold-out-velvet-dress",
     name: "Velvet Anarkali Dress",
     pricePaise: 740000,
-    attributes: { color: "Wine", material: "Velvet", occasion: "Festive" },
+    attributes: {
+      color: "Wine",
+      material: "Velvet",
+      occasion: "Festive",
+      size: "M",
+      fit: "A-Line",
+    },
     materialLabel: "Velvet",
     categorySlug: "dresses",
     categoryName: "Dresses",
     availability: "SOLD_OUT",
     collectionSlugs: [],
+    collectionNames: [],
     publishedAt: "2026-10-01T00:00:00Z",
   }),
 ];
 
 const categories: CategoryNode[] = [
-  { id: "c1", name: "Sarees", slug: "sarees", parentId: null, position: 1 },
-  { id: "c1-1", name: "Silk Sarees", slug: "sarees-silk", parentId: "c1", position: 1 },
-  { id: "c2", name: "Dresses", slug: "dresses", parentId: null, position: 2 },
-  { id: "c3", name: "Kurtis", slug: "kurtis", parentId: null, position: 3 },
+  {
+    id: "c1",
+    name: "Sarees",
+    slug: "sarees",
+    parentId: null,
+    position: 1,
+    attributeSchema: [
+      { key: "fabric", label: "Fabric", type: "text", filterable: true },
+      { key: "color", label: "Color", type: "option", filterable: true, options: ["Wine"] },
+      { key: "weave", label: "Weave", type: "text", filterable: true },
+      { key: "zari", label: "Zari", type: "text" },
+      { key: "blouse_included", label: "Blouse Included", type: "boolean", filterable: true },
+    ],
+  },
+  {
+    id: "c1-1",
+    name: "Silk Sarees",
+    slug: "sarees-silk",
+    parentId: "c1",
+    position: 1,
+    attributeSchema: [
+      { key: "weave", label: "Weave Type", type: "text", filterable: true },
+    ],
+  },
+  {
+    id: "c2",
+    name: "Dresses",
+    slug: "dresses",
+    parentId: null,
+    position: 2,
+    attributeSchema: [
+      { key: "material", label: "Material", type: "text", filterable: true },
+      { key: "size", label: "Size", type: "option", filterable: true, options: ["M", "L"] },
+      { key: "fit", label: "Fit", type: "text", filterable: true },
+    ],
+  },
+  {
+    id: "c3",
+    name: "Kurtis",
+    slug: "kurtis",
+    parentId: null,
+    position: 3,
+    attributeSchema: [],
+  },
 ];
 
 describe("parseFilters (§40 URL → filters)", () => {
@@ -118,6 +176,45 @@ describe("parseFilters (§40 URL → filters)", () => {
     expect(f.page).toBe(1);
     expect(f.minPricePaise).toBeNull();
   });
+
+  it("parses repeatable f_<key> params into attributeFilters", () => {
+    const f = parseFilters({
+      f_weave: ["Banarasi", "Handloom"],
+      f_size: "M",
+    });
+    expect(f.attributeFilters).toEqual({
+      weave: ["Banarasi", "Handloom"],
+      size: ["M"],
+    });
+  });
+
+  it("drops blank f_<key> values and bare f_ params", () => {
+    const f = parseFilters({ f_weave: [" ", ""], f_: "x" });
+    expect(f.attributeFilters).toEqual({});
+  });
+
+  it("keeps only schema-declared keys when attributeKeys is given", () => {
+    const f = parseFilters(
+      { f_weave: "Banarasi", f_size: "M", f_hack: "1" },
+      { attributeKeys: ["weave"] },
+    );
+    expect(f.attributeFilters).toEqual({ weave: ["Banarasi"] });
+  });
+});
+
+describe("pruneAttributeFilters (stale URL keys)", () => {
+  it("drops keys outside the declared facet vocabulary", () => {
+    const f = parseFilters({ f_weave: "Banarasi", f_size: "M" });
+    const pruned = pruneAttributeFilters(f, ["weave"]);
+    expect(pruned.attributeFilters).toEqual({ weave: ["Banarasi"] });
+  });
+
+  it("keeps the filters object shallow-equal otherwise", () => {
+    const f = parseFilters({ color: ["Wine"], f_size: "M" });
+    const pruned = pruneAttributeFilters(f, []);
+    expect(pruned.colors).toEqual(["Wine"]);
+    expect(pruned.attributeFilters).toEqual({});
+  });
 });
 
 describe("buildQuery (filters → URL)", () => {
@@ -127,6 +224,7 @@ describe("buildQuery (filters → URL)", () => {
       color: ["Wine"],
       occasion: ["Wedding"],
       fabric: ["Silk"],
+      f_weave: "Banarasi",
       min: "1000",
       sort: "price_desc",
       page: "3",
@@ -139,6 +237,11 @@ describe("buildQuery (filters → URL)", () => {
 
   it("omits defaults for clean canonical URLs", () => {
     expect(buildQuery(parseFilters({}))).toBe("");
+  });
+
+  it("emits f_<key> params in sorted key order for canonical URLs", () => {
+    const f = parseFilters({ f_size: "M", f_weave: "Banarasi" });
+    expect(buildQuery(f)).toBe("?f_size=M&f_weave=Banarasi");
   });
 });
 
@@ -165,6 +268,11 @@ describe("matchesQuery (§40 free text)", () => {
     expect(matchesQuery(p, "1-DEFAULT")).toBe(true);
     expect(matchesQuery(p, "wedding")).toBe(true);
     expect(matchesQuery(p, "Kanjivaram")).toBe(false);
+  });
+
+  it("matches collection names (§40 free text)", () => {
+    expect(matchesQuery(p, "festive edit")).toBe(true);
+    expect(matchesQuery(products[1], "festive edit")).toBe(false);
   });
 
   it("requires every token to match somewhere", () => {
@@ -221,6 +329,51 @@ describe("filterProducts (§40 dimensions)", () => {
       "sold-out-velvet-dress",
     ]);
   });
+
+  it("schema-driven facet: OR within a key, AND with fixed dimensions", () => {
+    const weave = filterProducts(
+      products,
+      parseFilters({ f_weave: ["Banarasi", "Handloom"] }),
+      categories,
+    );
+    expect(weave.map((p) => p.slug)).toEqual(["wine-silk-saree"]);
+
+    const weaveAndColor = filterProducts(
+      products,
+      parseFilters({ f_weave: "Banarasi", color: ["Wine"] }),
+      categories,
+    );
+    expect(weaveAndColor.map((p) => p.slug)).toEqual(["wine-silk-saree"]);
+
+    const weaveWrongColor = filterProducts(
+      products,
+      parseFilters({ f_weave: "Banarasi", color: ["Ivory"] }),
+      categories,
+    );
+    expect(weaveWrongColor).toHaveLength(0);
+  });
+
+  it("schema-driven facet: AND across keys", () => {
+    const f = parseFilters({ f_size: "M", f_fit: "A-Line" });
+    expect(filterProducts(products, f, categories).map((p) => p.slug)).toEqual([
+      "sold-out-velvet-dress",
+    ]);
+  });
+
+  it("schema-driven facet: products without the attribute never match", () => {
+    // saree and kurti carry no `size`; only the dress does
+    const f = parseFilters({ f_size: "M" });
+    expect(filterProducts(products, f, categories).map((p) => p.slug)).toEqual([
+      "sold-out-velvet-dress",
+    ]);
+  });
+
+  it("schema-driven facet: boolean attribute values are not facet values", () => {
+    // blouse_included is true (boolean) on the saree — string filters match
+    // nothing even when the key is selected
+    const f = parseFilters({ f_blouse_included: "true" });
+    expect(filterProducts(products, f, categories)).toHaveLength(0);
+  });
 });
 
 describe("sortProducts", () => {
@@ -265,5 +418,49 @@ describe("distinctAttributeValues", () => {
       "Silk",
       "Velvet",
     ]);
+  });
+});
+
+describe("schemaFacetFields (§40 category-specific facets)", () => {
+  it("unions filterable string fields of all categories when unscoped", () => {
+    expect(schemaFacetFields(categories, null)).toEqual([
+      { key: "weave", label: "Weave" },
+      { key: "size", label: "Size" },
+      { key: "fit", label: "Fit" },
+    ]);
+  });
+
+  it("excludes fixed dimensions, non-filterable fields and booleans", () => {
+    const keys = schemaFacetFields(categories, null).map((f) => f.key);
+    expect(keys).not.toContain("color");
+    expect(keys).not.toContain("fabric");
+    expect(keys).not.toContain("material");
+    expect(keys).not.toContain("occasion");
+    expect(keys).not.toContain("zari");
+    expect(keys).not.toContain("blouse_included");
+  });
+
+  it("scopes to the category subtree", () => {
+    const sarees = schemaFacetFields(
+      categories,
+      categoryScope(categories, "sarees"),
+    );
+    expect(sarees).toEqual([{ key: "weave", label: "Weave" }]);
+
+    const dresses = schemaFacetFields(
+      categories,
+      categoryScope(categories, "dresses"),
+    );
+    expect(dresses.map((f) => f.key)).toEqual(["size", "fit"]);
+  });
+
+  it("first declaration wins on key collisions across categories", () => {
+    // sarees-silk re-declares weave with a different label; the parent's
+    // category-position-first declaration keeps its label
+    const sarees = schemaFacetFields(
+      categories,
+      categoryScope(categories, "sarees"),
+    );
+    expect(sarees[0].label).toBe("Weave");
   });
 });

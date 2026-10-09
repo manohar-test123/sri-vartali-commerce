@@ -7,7 +7,11 @@
 
 import Link from "next/link";
 
-import { buildQuery, type CategoryNode } from "@/lib/storefront/search";
+import {
+  buildQuery,
+  type AttributeFacetField,
+  type CategoryNode,
+} from "@/lib/storefront/search";
 import type { CatalogFilters, CatalogSort } from "@/lib/storefront/types";
 
 const SORT_LABELS: Record<CatalogSort, string> = {
@@ -46,24 +50,35 @@ export function FiltersPanel({
   basePath,
   filters,
   facets,
+  attributeFacets,
   categories,
+  collections,
   lockedCategory,
+  lockedCollection,
 }: {
   basePath: string;
   filters: CatalogFilters;
   facets: { colors: string[]; occasions: string[]; fabrics: string[] };
+  /** §40 category-specific groups generated from attribute schemas. */
+  attributeFacets: Array<AttributeFacetField & { values: string[] }>;
   categories: CategoryNode[];
+  /** Active collections for the §40 collection filter. */
+  collections: Array<{ slug: string; name: string }>;
   /** Category pages lock their scope: no category picker inside. */
   lockedCategory?: boolean;
+  /** Collection pages lock their scope: no collection picker inside. */
+  lockedCollection?: boolean;
 }) {
   const hasAny =
     filters.colors.length > 0 ||
     filters.occasions.length > 0 ||
     filters.fabrics.length > 0 ||
+    Object.values(filters.attributeFilters).some((v) => v.length > 0) ||
     filters.minPricePaise !== null ||
     filters.maxPricePaise !== null ||
     filters.inStockOnly ||
-    (!lockedCategory && filters.categorySlug !== null);
+    (!lockedCategory && filters.categorySlug !== null) ||
+    (!lockedCollection && filters.collectionSlug !== null);
 
   return (
     <form
@@ -75,7 +90,7 @@ export function FiltersPanel({
       {filters.q !== "" ? (
         <input type="hidden" name="q" value={filters.q} />
       ) : null}
-      {filters.collectionSlug ? (
+      {lockedCollection && filters.collectionSlug ? (
         <input type="hidden" name="collection" value={filters.collectionSlug} />
       ) : null}
       {lockedCategory && filters.categorySlug ? (
@@ -152,6 +167,30 @@ export function FiltersPanel({
         </fieldset>
       ) : null}
 
+      {!lockedCollection && collections.length > 0 ? (
+        <fieldset>
+          <legend className="mb-1 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+            Collection
+          </legend>
+          <label className="sr-only" htmlFor="filter-collection">
+            Collection
+          </label>
+          <select
+            id="filter-collection"
+            name="collection"
+            defaultValue={filters.collectionSlug ?? ""}
+            className="w-full rounded-lg border border-wine-900/15 bg-white px-2.5 py-1.5 text-sm focus:border-gold-500 focus:outline-none"
+          >
+            <option value="">All collections</option>
+            {collections.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </fieldset>
+      ) : null}
+
       <fieldset>
         <legend className="mb-1 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
           Colour
@@ -209,6 +248,23 @@ export function FiltersPanel({
         )}
       </fieldset>
 
+      {attributeFacets.map((group) => (
+        <fieldset key={group.key}>
+          <legend className="mb-1 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+            {group.label}
+          </legend>
+          {group.values.map((v) => (
+            <CheckRow
+              key={v}
+              name={`f_${group.key}`}
+              value={v}
+              checked={filters.attributeFilters[group.key]?.includes(v) ?? false}
+              label={v}
+            />
+          ))}
+        </fieldset>
+      ))}
+
       <div className="flex items-center justify-between gap-3 border-t border-wine-900/10 pt-4">
         <div className="flex-1">
           <label
@@ -245,10 +301,14 @@ export function FiltersPanel({
               colors: [],
               occasions: [],
               fabrics: [],
+              attributeFilters: {},
               minPricePaise: null,
               maxPricePaise: null,
               inStockOnly: false,
               categorySlug: lockedCategory ? filters.categorySlug : null,
+              collectionSlug: lockedCollection
+                ? filters.collectionSlug
+                : null,
               sort: filters.sort,
               page: 1,
             })}`}

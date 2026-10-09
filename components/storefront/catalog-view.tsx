@@ -13,15 +13,19 @@ import { ProductGrid } from "@/components/storefront/product-grid";
 import { cardDataFromSummary } from "@/components/storefront/product-card";
 import {
   buildQuery,
+  categoryScope,
   distinctAttributeValues,
   filterProducts,
   paginate,
   parseFilters,
+  pruneAttributeFilters,
+  schemaFacetFields,
   sortProducts,
 } from "@/lib/storefront/search";
 import {
   listPublishedProducts,
   listStorefrontCategories,
+  listStorefrontCollections,
 } from "@/lib/storefront/queries";
 
 export interface CatalogViewScope {
@@ -29,6 +33,8 @@ export interface CatalogViewScope {
   /** Hide the category picker (a category page IS its scope). */
   lockedCategory?: boolean;
   collectionSlug?: string;
+  /** Hide the collection picker (a collection page IS its scope). */
+  lockedCollection?: boolean;
 }
 
 export async function CatalogView({
@@ -40,23 +46,44 @@ export async function CatalogView({
   params: Record<string, string | string[] | undefined>;
   scope?: CatalogViewScope;
 }) {
-  const filters = parseFilters(params);
+  let filters = parseFilters(params);
   if (scope.categorySlug) filters.categorySlug = scope.categorySlug;
   if (scope.collectionSlug) filters.collectionSlug = scope.collectionSlug;
 
-  const [products, categories] = await Promise.all([
+  const [products, categories, collections] = await Promise.all([
     listPublishedProducts(),
     listStorefrontCategories(),
+    listStorefrontCollections(),
   ]);
+
+  // §40 category-specific facets: filterable schema fields of the categories
+  // in scope (the selected/locked category's subtree; all categories when
+  // unscoped). f_<key> params beyond the declared keys are dropped, so
+  // stale URLs never invent filter dimensions.
+  const scopeSlugs =
+    filters.categorySlug !== null
+      ? categoryScope(categories, filters.categorySlug)
+      : null;
+  const attributeFields = schemaFacetFields(categories, scopeSlugs);
+  filters = pruneAttributeFilters(
+    filters,
+    attributeFields.map((f) => f.key),
+  );
 
   // Facet vocabulary comes from the scope itself (all of Sarees, say),
   // so options never disappear because another facet is active.
-  const scoped = filterProducts(products, { ...filters, colors: [], occasions: [], fabrics: [], minPricePaise: null, maxPricePaise: null, inStockOnly: false, q: "", page: 1 }, categories);
+  const scoped = filterProducts(products, { ...filters, colors: [], occasions: [], fabrics: [], attributeFilters: {}, minPricePaise: null, maxPricePaise: null, inStockOnly: false, q: "", page: 1 }, categories);
   const facets = {
     colors: distinctAttributeValues(scoped, ["color"]),
     occasions: distinctAttributeValues(scoped, ["occasion"]),
     fabrics: distinctAttributeValues(scoped, ["fabric", "material"]),
   };
+  const attributeFacets = attributeFields
+    .map((field) => ({
+      ...field,
+      values: distinctAttributeValues(scoped, [field.key]),
+    }))
+    .filter((group) => group.values.length > 0);
 
   const filtered = filterProducts(products, filters, categories);
   const sorted = sortProducts(filtered, filters.sort);
@@ -69,17 +96,25 @@ export async function CatalogView({
     filters.colors.length +
     filters.occasions.length +
     filters.fabrics.length +
+    Object.values(filters.attributeFilters).reduce(
+      (n, values) => n + values.length,
+      0,
+    ) +
     (filters.minPricePaise !== null ? 1 : 0) +
     (filters.maxPricePaise !== null ? 1 : 0) +
     (filters.inStockOnly ? 1 : 0) +
-    (!scope.lockedCategory && filters.categorySlug !== null ? 1 : 0);
+    (!scope.lockedCategory && filters.categorySlug !== null ? 1 : 0) +
+    (!scope.lockedCollection && filters.collectionSlug !== null ? 1 : 0);
   const panel = (
     <FiltersPanel
       basePath={basePath}
       filters={filters}
       facets={facets}
+      attributeFacets={attributeFacets}
       categories={categories}
+      collections={collections.map((c) => ({ slug: c.slug, name: c.name }))}
       lockedCategory={scope.lockedCategory}
+      lockedCollection={scope.lockedCollection}
     />
   );
 

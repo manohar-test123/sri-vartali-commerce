@@ -10,6 +10,7 @@
  */
 
 import { createClient as createServerClient } from "@/lib/db/server";
+import { parseSchema } from "@/lib/catalog/attributes";
 
 import type { CategoryNode } from "@/lib/storefront/search";
 import type { CardImage, StoreProductSummary } from "@/lib/storefront/types";
@@ -134,7 +135,7 @@ function isNew(publishedAt: string | null): boolean {
 
 function toSummary(
   row: RawProductRow,
-  collectionSlugById: Map<string, string>,
+  collectionsById: Map<string, { slug: string; name: string }>,
   categoryById: Map<string, { name: string; parentId: string | null }>,
   rating: { average: number; count: number } | undefined,
 ): StoreProductSummary {
@@ -169,7 +170,10 @@ function toSummary(
     publishedAt: row.published_at,
     attributes: row.attributes,
     collectionSlugs: (row.collection_products ?? [])
-      .map((cp) => collectionSlugById.get(cp.collection_id))
+      .map((cp) => collectionsById.get(cp.collection_id)?.slug)
+      .filter((s): s is string => s !== undefined),
+    collectionNames: (row.collection_products ?? [])
+      .map((cp) => collectionsById.get(cp.collection_id)?.name)
       .filter((s): s is string => s !== undefined),
     rating: rating ?? null,
   };
@@ -183,11 +187,11 @@ export async function listPublishedProducts(): Promise<
 
   const { data: collections, error: collErr } = await supabase
     .from("collections")
-    .select("id, slug")
+    .select("id, slug, name")
     .eq("is_active", true);
   if (collErr) throw new Error(`collections: ${collErr.message}`);
-  const slugById = new Map(
-    (collections ?? []).map((c) => [c.id, c.slug]),
+  const collectionsById = new Map(
+    (collections ?? []).map((c) => [c.id, { slug: c.slug, name: c.name }]),
   );
 
   const { data: rows, error } = await supabase
@@ -219,16 +223,18 @@ export async function listPublishedProducts(): Promise<
   );
 
   return (rows ?? []).map((r) =>
-    toSummary(r as RawProductRow, slugById, categoryById, ratings.get(r.id)),
+    toSummary(r as RawProductRow, collectionsById, categoryById, ratings.get(r.id)),
   );
 }
 
-/** Active categories as a flat list (nav + category pages + facets). */
+/** Active categories as a flat list (nav + category pages + facets). The
+ *  attribute_schema rides along — §40 category-specific filters generate
+ *  from it. */
 export async function listStorefrontCategories(): Promise<CategoryNode[]> {
   const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, slug, parent_id, position")
+    .select("id, name, slug, parent_id, position, attribute_schema")
     .eq("is_active", true)
     .order("position");
   if (error) throw new Error(`categories: ${error.message}`);
@@ -238,6 +244,7 @@ export async function listStorefrontCategories(): Promise<CategoryNode[]> {
     slug: c.slug,
     parentId: c.parent_id,
     position: c.position,
+    attributeSchema: parseSchema(c.attribute_schema),
   }));
 }
 

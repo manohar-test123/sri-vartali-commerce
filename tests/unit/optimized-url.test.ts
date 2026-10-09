@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { optimizedImageUrl } from "@/lib/media/optimized-url";
+import {
+  optimizedImageUrl,
+  responsiveImageSrcSet,
+} from "@/lib/media/optimized-url";
 
 const BASE = "https://res.cloudinary.com/demo/image/upload/v1690000000/svs/products/SVS-P-000001/front.jpg";
 
@@ -45,5 +48,34 @@ describe("optimizedImageUrl", () => {
   it("is idempotent for URLs it already transformed", () => {
     const once = optimizedImageUrl(BASE, { width: 600 })!;
     expect(optimizedImageUrl(once, { width: 600 })).toBe(once);
+  });
+});
+
+describe("responsiveImageSrcSet (§47)", () => {
+  it("builds width descriptors across the requested widths", () => {
+    expect(responsiveImageSrcSet(BASE, [400, 600])).toBe(
+      [
+        "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_400/v1690000000/svs/products/SVS-P-000001/front.jpg 400w",
+        "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_600/v1690000000/svs/products/SVS-P-000001/front.jpg 600w",
+      ].join(", "),
+    );
+  });
+
+  it("returns null for non-Cloudinary URLs — plain src already covers them", () => {
+    expect(responsiveImageSrcSet("https://example.com/a.jpg", [400, 600])).toBeNull();
+    expect(responsiveImageSrcSet("/static/a.jpg", [400])).toBeNull();
+  });
+
+  it("returns null for absent images and empty width lists", () => {
+    expect(responsiveImageSrcSet(null, [400])).toBeNull();
+    expect(responsiveImageSrcSet(undefined, [400])).toBeNull();
+    expect(responsiveImageSrcSet(BASE, [])).toBeNull();
+  });
+
+  it("transforms each candidate through the same chain (f_auto, q_auto)", () => {
+    const srcSet = responsiveImageSrcSet(BASE, [400, 600])!;
+    for (const candidate of srcSet.split(", ")) {
+      expect(candidate).toContain("/upload/f_auto,q_auto,w_");
+    }
   });
 });

@@ -8,6 +8,7 @@
 import Link from "next/link";
 
 import { FiltersPanel } from "@/components/storefront/filters-panel";
+import { FiltersSheet } from "@/components/storefront/filters-sheet";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { cardDataFromSummary } from "@/components/storefront/product-card";
 import {
@@ -61,20 +62,41 @@ export async function CatalogView({
   const sorted = sortProducts(filtered, filters.sort);
   const page = paginate(sorted, filters.page);
 
+  // §48: sidebar on desktop, bottom-sheet on mobile. The panel itself is the
+  // same GET form in both places; without JavaScript the sidebar comes back
+  // (noscript override below), so filtering never depends on JS.
+  const activeFilterCount =
+    filters.colors.length +
+    filters.occasions.length +
+    filters.fabrics.length +
+    (filters.minPricePaise !== null ? 1 : 0) +
+    (filters.maxPricePaise !== null ? 1 : 0) +
+    (filters.inStockOnly ? 1 : 0) +
+    (!scope.lockedCategory && filters.categorySlug !== null ? 1 : 0);
+  const panel = (
+    <FiltersPanel
+      basePath={basePath}
+      filters={filters}
+      facets={facets}
+      categories={categories}
+      lockedCategory={scope.lockedCategory}
+    />
+  );
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+      <noscript>
+        {/* The mobile sheet needs JS — without it the sidebar stays put. */}
+        <style>{`.filters-aside { display: block !important; }`}</style>
+      </noscript>
       <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-        <aside>
-          <FiltersPanel
-            basePath={basePath}
-            filters={filters}
-            facets={facets}
-            categories={categories}
-            lockedCategory={scope.lockedCategory}
-          />
-        </aside>
+        <aside className="filters-aside hidden lg:block">{panel}</aside>
 
         <div>
+          <div className="mb-4 lg:hidden">
+            <FiltersSheet activeCount={activeFilterCount}>{panel}</FiltersSheet>
+          </div>
+
           <p className="mb-4 text-sm text-wine-900/60" aria-live="polite">
             {page.total === 0
               ? "No pieces match"

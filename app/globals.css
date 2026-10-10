@@ -1,12 +1,74 @@
 @import "tailwindcss";
 
 /*
- * Sri Vartali design tokens — spec §10.
- * Palette: deep wine (primary), antique gold (accent), warm ivory (surface).
- * Premium serif headings, clean sans-serif UI. Restraint over ornament.
+ * Sri Vartali design tokens — Royal Handloom Heritage design system.
+ * Palette: imperial crimson (primary), antique gold (secondary), temple emerald (tertiary), royal silk ivory (surface).
  */
 @theme {
-  /* Deep wine */
+  /* Core Royal Handloom Heritage palette */
+  --color-surface: #fbf9f6;
+  --color-surface-dim: #dbdad7;
+  --color-surface-bright: #fbf9f6;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f5f3f0;
+  --color-surface-container: #efeeeb;
+  --color-surface-container-high: #eae8e5;
+  --color-surface-container-highest: #e4e2df;
+  --color-on-surface: #1b1c1a;
+  --color-on-surface-variant: #574141;
+  --color-inverse-surface: #30312f;
+  --color-inverse-on-surface: #f2f0ed;
+  --color-outline: #8b7171;
+  --color-outline-variant: #debfbf;
+  --color-surface-tint: #aa333e;
+  --color-primary: #5d0012;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #801323;
+  --color-on-primary-container: #ff8a8e;
+  --color-inverse-primary: #ffb3b3;
+  --color-secondary: #775a00;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #fece57;
+  --color-on-secondary-container: #735700;
+  --color-tertiary: #003128;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #1c473e;
+  --color-on-tertiary-container: #89b5a8;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-primary-fixed: #ffdad9;
+  --color-primary-fixed-dim: #ffb3b3;
+  --color-on-primary-fixed: #40000a;
+  --color-on-primary-fixed-variant: #891b29;
+  --color-secondary-fixed: #ffdf98;
+  --color-secondary-fixed-dim: #eec14b;
+  --color-on-secondary-fixed: #251a00;
+  --color-on-secondary-fixed-variant: #5a4300;
+  --color-tertiary-fixed: #bfecde;
+  --color-tertiary-fixed-dim: #a3d0c3;
+  --color-on-tertiary-fixed: #00201a;
+  --color-on-tertiary-fixed-variant: #244e44;
+  --color-background: #fbf9f6;
+  --color-on-background: #1b1c1a;
+  --color-surface-variant: #e4e2df;
+
+  /* Spacing Scale */
+  --spacing-space-2xl: 5rem;
+  --spacing-margin-desktop: 4rem;
+  --spacing-space-md: 1rem;
+  --spacing-margin: 2rem;
+  --spacing-gutter-desktop: 2.5rem;
+  --spacing-space-lg: 1.75rem;
+  --spacing-space-xl: 3rem;
+  --spacing-gutter-mobile: 1rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-margin-mobile: 1.25rem;
+  --spacing-gutter: 1.5rem;
+
+  /* Preserved wine / gold scales for existing catalog components */
   --color-wine-50: #fbf4f7;
   --color-wine-100: #f5e3eb;
   --color-wine-200: #e8c2d2;
@@ -19,7 +81,6 @@
   --color-wine-900: #3b0e22;
   --color-wine-950: #260815;
 
-  /* Antique gold */
   --color-gold-50: #fbf8ef;
   --color-gold-100: #f6efda;
   --color-gold-200: #ecddb2;
@@ -31,7 +92,6 @@
   --color-gold-800: #5f431f;
   --color-gold-900: #402c15;
 
-  /* Warm ivory */
   --color-ivory-50: #fdfbf7;
   --color-ivory-100: #faf6ed;
   --color-ivory-200: #f4edde;
@@ -39,33 +99,75 @@
   --color-ivory-400: #dacba6;
   --color-ivory-500: #c4b085;
 
-  /* Typography: variables are injected by next/font in app/layout.tsx */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Typography */
+  --font-sans: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-montserrat: var(--font-montserrat), sans-serif;
 
-  --color-surface: var(--color-ivory-100);
-  --color-ink: var(--color-wine-950);
+  --font-display-hero: var(--font-playfair), serif;
+  --font-headline-lg: var(--font-playfair), serif;
+  --font-headline-md: var(--font-playfair), serif;
+  --font-headline-sm: var(--font-playfair), serif;
+  --font-title-lg: var(--font-playfair), serif;
+  --font-body-lg: var(--font-jakarta), sans-serif;
+  --font-body-md: var(--font-jakarta), sans-serif;
+  --font-body-sm: var(--font-jakarta), sans-serif;
+  --font-label-caps: var(--font-montserrat), sans-serif;
+  --font-label-md: var(--font-jakarta), sans-serif;
+  --font-label-sm: var(--font-montserrat), sans-serif;
+
+  --color-ink: #1b1c1a;
 }
 
 body {
   background-color: var(--color-surface);
-  color: var(--color-ink);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
 }
 
 ::selection {
-  background-color: var(--color-gold-200);
-  color: var(--color-wine-950);
+  background-color: var(--color-secondary-fixed);
+  color: var(--color-on-secondary-fixed);
 }
 
-/*
- * §49 keyboard navigation: one site-wide visible focus state. Components
- * that style their own focus (inputs swap border color) still read as
- * focused; everything else gets this gold ring.
- */
 :focus-visible {
-  outline: 2px solid var(--color-gold-600);
+  outline: 2px solid var(--color-secondary);
   outline-offset: 2px;
 }
+
+/* Custom typography scale classes matching DESIGN.md */
+.font-display-hero { font-family: var(--font-display-hero); }
+.text-display-hero { font-size: clamp(38px, 5vw, 56px); line-height: 1.15; letter-spacing: -0.01em; }
+
+.font-headline-lg { font-family: var(--font-headline-lg); }
+.text-headline-lg { font-size: clamp(28px, 3.5vw, 40px); line-height: 1.2; letter-spacing: -0.01em; }
+
+.font-headline-md { font-family: var(--font-headline-md); }
+.text-headline-md { font-size: 28px; line-height: 36px; letter-spacing: 0em; }
+
+.font-headline-sm { font-family: var(--font-headline-sm); }
+.text-headline-sm { font-size: 22px; line-height: 30px; letter-spacing: 0.01em; }
+
+.font-title-lg { font-family: var(--font-title-lg); }
+.text-title-lg { font-size: 18px; line-height: 26px; letter-spacing: 0.02em; }
+
+.font-body-lg { font-family: var(--font-body-lg); }
+.text-body-lg { font-size: 17px; line-height: 28px; letter-spacing: 0.01em; }
+
+.font-body-md { font-family: var(--font-body-md); }
+.text-body-md { font-size: 15px; line-height: 24px; letter-spacing: 0.01em; }
+
+.font-body-sm { font-family: var(--font-body-sm); }
+.text-body-sm { font-size: 13px; line-height: 20px; letter-spacing: 0.01em; }
+
+.font-label-caps { font-family: var(--font-label-caps); }
+.text-label-caps { font-size: 11px; line-height: 16px; letter-spacing: 0.15em; font-weight: 600; }
+
+.font-label-md { font-family: var(--font-label-md); }
+.text-label-md { font-size: 13px; line-height: 18px; letter-spacing: 0.04em; font-weight: 600; }
+
+.font-label-sm { font-family: var(--font-label-sm); }
+.text-label-sm { font-size: 10px; line-height: 14px; letter-spacing: 0.12em; font-weight: 500; }
 
 @media (prefers-reduced-motion: reduce) {
   *,

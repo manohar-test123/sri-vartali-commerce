@@ -178,6 +178,12 @@ describe("extractOrderCode (§3)", () => {
     ).toBe("SVS-ORD-20261002-00129");
   });
 
+  it("matches order sequences with 6 or more digits without truncation", () => {
+    expect(extractOrderCode("Order SVS-ORD-20261002-100000")).toBe(
+      "SVS-ORD-20261002-100000",
+    );
+  });
+
   it("rejects malformed codes", () => {
     expect(extractOrderCode("SVS-ORD-2026102-00129")).toBeNull(); // 7-digit date
     expect(extractOrderCode("SVS-ORD-20261002-0012")).toBeNull(); // 4-digit seq

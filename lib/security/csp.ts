@@ -39,7 +39,7 @@ export function buildCsp({ nonce, isDev }: CspOptions): string {
     "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co",
     "font-src 'self' data:",
     // ws: covers the next-dev HMR socket (dev only — localhost).
-    `connect-src 'self' https://*.supabase.co https://api.cloudinary.com${
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudinary.com${
       isDev ? " ws:" : ""
     }`,
     "worker-src 'self' blob:",

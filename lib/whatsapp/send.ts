@@ -83,9 +83,12 @@ function isConfigured(): boolean {
   return Boolean(env.whatsapp.phoneNumberId && env.whatsapp.accessToken);
 }
 
-/** Meta expects digits without a leading + in `to`. */
-function normalizeRecipient(phone: string): string {
-  return phone.replace(/\D/g, "");
+/** Meta expects digits without a leading + in `to` with country code. */
+export function normalizeRecipient(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+  return digits;
 }
 
 async function callGraphApi(

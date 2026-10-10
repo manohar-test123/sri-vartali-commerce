@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createClient as createServerClient } from "@/lib/db/server";
 import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
+import { env } from "@/lib/env";
 
 export type LoginActionState = {
   error?: string;
@@ -43,15 +44,29 @@ export async function requestMagicLink(
     };
   }
 
-  const origin = (await headers()).get("origin");
+  const headerList = await headers();
+  const origin = headerList.get("origin");
+  let baseUrl: string;
+  if (origin) {
+    baseUrl = origin;
+  } else {
+    const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+    if (host) {
+      const proto = headerList.get("x-forwarded-proto") ?? "https";
+      baseUrl = `${proto}://${host}`;
+    } else {
+      baseUrl = env.siteUrl;
+    }
+  }
   const next = String(formData.get("next") ?? "/account");
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/account";
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
       shouldCreateUser: true,
-      emailRedirectTo: `${origin}/account/login/verify?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${baseUrl}/account/login/verify?next=${encodeURIComponent(safeNext)}`,
     },
   });
 

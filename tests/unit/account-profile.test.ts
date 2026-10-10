@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { planPhoneClaim } from "@/lib/account/profile";
-import { ownsOrder } from "@/lib/account/queries";
+import { buildAccountOrdersFilter, ownsOrder } from "@/lib/account/queries";
 
 describe("planPhoneClaim (account ↔ phone-keyed customer book)", () => {
   it("creates a new customer row when the phone is unknown", () => {
@@ -50,5 +50,18 @@ describe("ownsOrder (§7 /account/orders gate)", () => {
       ownsOrder({ customer_id: "c2", email: "other@x.io" }, customer, "me@x.io"),
     ).toBe(false);
     expect(ownsOrder({ customer_id: null, email: null }, null, null)).toBe(false);
+  });
+});
+
+describe("buildAccountOrdersFilter", () => {
+  it("builds PostgREST or filter without double-encoding email", () => {
+    expect(buildAccountOrdersFilter("c1", "user@example.com")).toBe(
+      "customer_id.eq.c1,email.eq.user@example.com",
+    );
+    expect(buildAccountOrdersFilter(null, "user@example.com")).toBe(
+      "email.eq.user@example.com",
+    );
+    expect(buildAccountOrdersFilter("c1", null)).toBe("customer_id.eq.c1");
+    expect(buildAccountOrdersFilter(null, null)).toBeNull();
   });
 });

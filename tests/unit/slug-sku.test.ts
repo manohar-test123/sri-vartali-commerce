@@ -45,4 +45,16 @@ describe("variant SKUs (spec §3 — ^SVS-P-\\d{6}-.+$)", () => {
     expect(defaultVariantSku("SVS-P-000001")).toMatch(/^SVS-P-\d{6}-.+$/);
     expect(variantSku("SVS-P-999999", "X", [])).toMatch(/^SVS-P-\d{6}-.+$/);
   });
+
+  it("provides a fallback when the variant name has no Latin characters", () => {
+    expect(variantSku("SVS-P-000121", "భారత్", [])).toBe(
+      "SVS-P-000121-variant",
+    );
+    expect(variantSku("SVS-P-000121", "!!!", [])).toBe(
+      "SVS-P-000121-variant",
+    );
+    expect(variantSku("SVS-P-000121", "భారత్", ["SVS-P-000121-variant"])).toBe(
+      "SVS-P-000121-variant-2",
+    );
+  });
 });

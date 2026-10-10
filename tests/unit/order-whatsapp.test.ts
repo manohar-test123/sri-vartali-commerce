@@ -4,6 +4,7 @@ import {
   buildOrderWhatsAppMessage,
   buildWhatsAppUrl,
 } from "@/lib/orders/whatsapp";
+import { normalizeRecipient } from "@/lib/whatsapp/send";
 import type { AddressInput } from "@/lib/checkout/address";
 
 const address: AddressInput = {
@@ -125,5 +126,16 @@ describe("buildWhatsAppUrl", () => {
     expect(buildWhatsAppUrl(null, "x")).toBeNull();
     expect(buildWhatsAppUrl("", "x")).toBeNull();
     expect(buildWhatsAppUrl("12345", "x")).toBeNull();
+  });
+});
+
+describe("normalizeRecipient", () => {
+  it.each([
+    ["9876543210", "919876543210"],
+    ["09876543210", "919876543210"],
+    ["+91 98765 43210", "919876543210"],
+    ["919876543210", "919876543210"],
+  ])("normalizes %s to %s", (input, expected) => {
+    expect(normalizeRecipient(input)).toBe(expected);
   });
 });

@@ -10,6 +10,7 @@ import {
   setMediaAlt,
 } from "@/lib/catalog/actions";
 import type { ProductMediaRow } from "@/lib/catalog/types";
+import { moveItem } from "@/lib/catalog/media-order";
 
 /**
  * Product photos (§15B): multi-upload with progress, drag-to-reorder,
@@ -57,10 +58,15 @@ export function MediaManager({
   function onDrop(index: number) {
     const from = dragIndex.current;
     dragIndex.current = null;
-    if (from === null || from === index) return;
-    const next = [...media];
-    const [moved] = next.splice(from, 1);
-    next.splice(index, 0, moved);
+    if (from === null) return;
+    void reorder(from, index);
+  }
+
+  /** §58 reorder: shared by desktop drag-drop and the touch/keyboard
+   *  move buttons — one code path, one persistence call. */
+  function reorder(from: number, to: number) {
+    if (from === to) return;
+    const next = moveItem(media, from, to);
     void persistOrder(next, primaryId ?? next[0]?.id ?? null);
   }
 
@@ -216,7 +222,27 @@ export function MediaManager({
               }}
               className="mt-2 w-full rounded-md border border-wine-900/10 px-1.5 py-1 text-[11px]"
             />
-            <div className="mt-1 flex justify-between text-[11px]">
+            <div className="mt-1 flex items-center justify-between gap-1 text-[11px]">
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  aria-label={`Move ${m.alt || m.url} earlier`}
+                  disabled={index === 0}
+                  onClick={() => reorder(index, index - 1)}
+                  className="rounded px-1 text-wine-900/70 hover:bg-wine-900/5 disabled:text-wine-900/20"
+                >
+                  ◀
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move ${m.alt || m.url} later`}
+                  disabled={index === media.length - 1}
+                  onClick={() => reorder(index, index + 1)}
+                  className="rounded px-1 text-wine-900/70 hover:bg-wine-900/5 disabled:text-wine-900/20"
+                >
+                  ▶
+                </button>
+              </div>
               {m.id === primaryId ? (
                 <span className="text-wine-900/40">primary</span>
               ) : (
@@ -280,7 +306,7 @@ export function MediaManager({
         >
           + Upload
           <span className="mt-1 text-[11px] text-wine-900/40">
-            drop files here · drag cards to reorder
+            drop files here · ◀▶ buttons or drag to reorder
           </span>
         </button>
         <input

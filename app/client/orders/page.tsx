@@ -17,29 +17,60 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Orders · Sri Vartali" };
 
-/** Client order list (spec §8, §34). Filters ride ?filter=. */
+/** Client order list (spec §8, §34). Filters ride ?filter=, search rides
+ *  ?q= (§58 "Find order by Order ID" — also matches name/phone). */
 export default async function ClientOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; q?: string }>;
 }) {
-  const { filter } = await searchParams;
+  const { filter, q } = await searchParams;
   const active: OrderListFilter = (
     ["all", "pending", "claimed", "action"] as const
   ).includes(filter as OrderListFilter)
     ? (filter as OrderListFilter)
     : "all";
+  const search = (q ?? "").trim().slice(0, 60);
 
-  const orders = await listOrders(active);
+  const orders = await listOrders(active, search);
+
+  /** Filter links keep the current search; the search form keeps the filter. */
+  const chipHref = (value: OrderListFilter) => {
+    const params = new URLSearchParams();
+    if (value !== "all") params.set("filter", value);
+    if (search !== "") params.set("q", search);
+    const qs = params.toString();
+    return qs === "" ? "/client/orders" : `/client/orders?${qs}`;
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Orders</p>
       <h1 className="mt-1 font-serif text-3xl text-wine-900">Orders</h1>
 
+      <form action="/client/orders" method="get" className="mt-6 flex gap-2">
+        {active !== "all" ? (
+          <input type="hidden" name="filter" value={active} />
+        ) : null}
+        <input
+          type="search"
+          name="q"
+          defaultValue={search}
+          placeholder="Find by Order ID, name or phone…"
+          aria-label="Find orders"
+          className="w-full max-w-md rounded-full border border-wine-900/15 bg-white px-4 py-2 text-sm text-wine-900 placeholder:text-wine-900/40 focus:border-gold-500 focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="rounded-full border border-wine-900/20 bg-white px-4 py-2 text-sm text-wine-900/70 transition-colors hover:border-wine-900/40"
+        >
+          Find
+        </button>
+      </form>
+
       <nav
         aria-label="Filter orders"
-        className="mt-6 flex flex-wrap gap-2 text-sm"
+        className="mt-4 flex flex-wrap gap-2 text-sm"
       >
         {(
           [
@@ -51,7 +82,7 @@ export default async function ClientOrdersPage({
         ).map(([value, label]) => (
           <Link
             key={value}
-            href={value === "all" ? "/client/orders" : `/client/orders?filter=${value}`}
+            href={chipHref(value)}
             aria-current={active === value ? "page" : undefined}
             className={`rounded-full border px-4 py-1.5 transition-colors ${
               active === value
@@ -66,8 +97,9 @@ export default async function ClientOrdersPage({
 
       {orders.length === 0 ? (
         <p className="mt-10 rounded-xl border border-dashed border-wine-900/25 px-6 py-12 text-center text-sm text-wine-900/50">
-          No orders here yet. Orders appear the moment a customer places one
-          from the storefront.
+          {search !== ""
+            ? `No orders match “${search}”. Try the full Order ID (SVS-ORD-…), the customer name or phone.`
+            : "No orders here yet. Orders appear the moment a customer places one from the storefront."}
         </p>
       ) : (
         <ul className="mt-6 space-y-3">

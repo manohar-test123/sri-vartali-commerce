@@ -11,6 +11,7 @@
  */
 
 import { createAdminClient } from "@/lib/db/admin";
+import { matchesOrderSearch } from "@/lib/orders/search";
 import { normalizeIndianPhone } from "@/lib/checkout/address";
 import type { AddressInput } from "@/lib/checkout/address";
 import type {
@@ -251,9 +252,12 @@ export interface OrderListRow {
   }>;
 }
 
-/** /client/orders list (§34). Sweeps first so filters see live state. */
+/** /client/orders list (§34). Sweeps first so filters see live state.
+ *  `search` is the §58 "Find order by Order ID" box — applied in-memory
+ *  after the fetch (launch-scale trade-off, same as inventory/customers). */
 export async function listOrders(
   filter: OrderListFilter = "all",
+  search?: string,
   limit = 100,
 ): Promise<OrderListRow[]> {
   await sweepExpiredReservations();
@@ -287,7 +291,14 @@ export async function listOrders(
 
   const { data, error } = await query;
   if (error) throw new Error(`orders list: ${error.message}`);
-  return (data ?? []) as unknown as OrderListRow[];
+  const rows = (data ?? []) as unknown as OrderListRow[];
+  if (!search || search.trim() === "") return rows;
+  return rows.filter((o) =>
+    matchesOrderSearch(
+      { orderNumber: o.order_number, customerName: o.customer_name, phone: o.phone },
+      search,
+    ),
+  );
 }
 
 /** §38 dashboard-home counters + action list. */

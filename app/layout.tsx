@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, Playfair_Display, Plus_Jakarta_Sans, Montserrat } from "next/font/google";
 import "./globals.css";
 
 import { env } from "@/lib/env";
@@ -14,6 +14,16 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
 });
 
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
+  subsets: ["latin"],
+});
+
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: {
@@ -21,7 +31,7 @@ export const metadata: Metadata = {
     template: "%s · Sri Vartali Sarees",
   },
   description:
-    "Premium handpicked sarees and fashion — Sri Vartali Sarees. Timeless weaves for celebration.",
+    "Royal Couture Handlooms — Sri Vartali Sarees. Authentic pure mulberry silk handwoven with certified 24-karat gold tested zari.",
 };
 
 export default function RootLayout({
@@ -30,9 +40,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${playfair.variable} h-full antialiased`}
+      className={`${inter.variable} ${playfair.variable} ${jakarta.variable} ${montserrat.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans bg-surface text-on-surface">{children}</body>
     </html>
   );
 }

@@ -16,7 +16,8 @@ export function variantSku(
   taken: Iterable<string>,
 ): string {
   const used = new Set(taken);
-  const root = `${productCode}-${slug(variantName)}`;
+  const variantSlug = slug(variantName) || "variant";
+  const root = `${productCode}-${variantSlug}`;
   if (!used.has(root)) return root;
 
   for (let n = 2; ; n++) {

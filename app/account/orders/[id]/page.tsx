@@ -21,11 +21,9 @@ export const dynamic = "force-dynamic";
 
 type PageProps = { params: Promise<{ id: string }> };
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Order · Sri Vartali`,
+    title: "Order · Sri Vartali",
     robots: { index: false, follow: false },
   };
 }

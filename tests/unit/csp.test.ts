@@ -20,7 +20,7 @@ describe("buildCsp", () => {
     const csp = buildCsp({ nonce: NONCE, isDev: false });
     expect(csp).toContain("img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co");
     expect(csp).toContain(
-      "connect-src 'self' https://*.supabase.co https://api.cloudinary.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudinary.com",
     );
   });
 

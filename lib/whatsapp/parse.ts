@@ -136,7 +136,7 @@ export function skippedEventId(wamid: string | null, index: number): string {
 }
 
 /** External order code (§3) as it appears inside customer message text. */
-export const ORDER_CODE_PATTERN = /SVS-ORD-(\d{8})-(\d{5})/i;
+export const ORDER_CODE_PATTERN = /\bSVS-ORD-(\d{8})-(\d{5,})\b/i;
 
 /** First §3 order code found in text, uppercased; null when absent. */
 export function extractOrderCode(text: string): string | null {

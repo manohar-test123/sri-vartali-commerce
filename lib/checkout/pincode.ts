@@ -106,7 +106,9 @@ export async function lookupPinCode(rawPin: string): Promise<PinLookupResult> {
     result = { ok: false, reason: "unavailable" };
   }
 
-  if (cache.size > 2000) cache.clear();
-  cache.set(pin, result);
+  if (result.reason !== "unavailable") {
+    if (cache.size > 2000) cache.clear();
+    cache.set(pin, result);
+  }
   return result;
 }

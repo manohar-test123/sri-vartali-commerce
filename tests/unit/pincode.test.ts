@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  lookupPinCode,
   mapPostalPincodeResponse,
   unwrapPostalPayload,
 } from "@/lib/checkout/pincode";
@@ -78,5 +79,32 @@ describe("mapPostalPincodeResponse (§21)", () => {
     expect(result.lookup!.postOffices).toEqual([]);
     expect(result.lookup!.state).toBeNull();
     expect(result.lookup!.district).toBeNull();
+  });
+});
+
+describe("lookupPinCode caching", () => {
+  it("does not cache transient unavailable responses", async () => {
+    let callCount = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error("Network timeout");
+      }
+      return new Response(JSON.stringify([successPayload]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+    try {
+      const first = await lookupPinCode("500099");
+      expect(first).toEqual({ ok: false, reason: "unavailable" });
+
+      const second = await lookupPinCode("500099");
+      expect(second.ok).toBe(true);
+      expect(callCount).toBe(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

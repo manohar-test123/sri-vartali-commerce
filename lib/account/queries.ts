@@ -56,6 +56,16 @@ export interface AccountOrderRow {
   }>;
 }
 
+export function buildAccountOrdersFilter(
+  customerId: string | null,
+  accountEmail: string | null,
+): string | null {
+  const orParts: string[] = [];
+  if (customerId) orParts.push(`customer_id.eq.${customerId}`);
+  if (accountEmail) orParts.push(`email.eq.${accountEmail}`);
+  return orParts.length === 0 ? null : orParts.join(",");
+}
+
 export async function listAccountOrders(
   userId: string,
   accountEmail: string | null,
@@ -63,10 +73,8 @@ export async function listAccountOrders(
   const admin = createAdminClient();
   const customer = await getAccountCustomer(userId);
 
-  const orParts: string[] = [];
-  if (customer) orParts.push(`customer_id.eq.${customer.id}`);
-  if (accountEmail) orParts.push(`email.eq.${encodeURIComponent(accountEmail)}`);
-  if (orParts.length === 0) return [];
+  const filter = buildAccountOrdersFilter(customer?.id ?? null, accountEmail);
+  if (!filter) return [];
 
   const { data, error } = await admin
     .from("orders")
@@ -75,7 +83,7 @@ export async function listAccountOrders(
        order_status, payment_status, fulfilment_status,
        order_items (product_name_snapshot, image_snapshot, quantity)`,
     )
-    .or(orParts.join(","))
+    .or(filter)
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) throw new Error(`account orders: ${error.message}`);

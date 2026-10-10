@@ -151,19 +151,21 @@ export async function placeOrderAction(
 
   // Success: the checkout source is consumed (§18/§19).
   await clearBuyNow();
-  const token = await readCartToken();
-  if (token) {
-    const { data: cart } = await admin
-      .from("carts")
-      .select("id")
-      .eq("cart_token", token)
-      .maybeSingle();
-    if (cart) {
-      await admin.from("cart_items").delete().eq("cart_id", cart.id);
-      await admin
+  if (view.mode === "cart") {
+    const token = await readCartToken();
+    if (token) {
+      const { data: cart } = await admin
         .from("carts")
-        .update({ converted_at: new Date().toISOString() })
-        .eq("id", cart.id);
+        .select("id")
+        .eq("cart_token", token)
+        .maybeSingle();
+      if (cart) {
+        await admin.from("cart_items").delete().eq("cart_id", cart.id);
+        await admin
+          .from("carts")
+          .update({ converted_at: new Date().toISOString() })
+          .eq("id", cart.id);
+      }
     }
   }
 

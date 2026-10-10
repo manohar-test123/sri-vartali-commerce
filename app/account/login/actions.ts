@@ -88,12 +88,13 @@ export async function passwordSignIn(
   }
 
   const next = String(formData.get("next") ?? "/account");
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/account";
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: "Email or password is incorrect." };
 
-  redirect(next);
+  redirect(safeNext);
 }
 
 export async function signOut() {

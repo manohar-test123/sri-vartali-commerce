@@ -35,11 +35,12 @@ contact dock + footer contacts (`components/storefront/contact-dock.tsx`,
 `lib/store/contact.ts`; number resolves from `store_settings.whatsapp_store_number`
 → `NEXT_PUBLIC_WHATSAPP_STORE_NUMBER`). Fresh Supabase project
 `sri-vartali-commerce` (all six migrations + sample catalog seed +
-`admin1@svs.local` SUPER_ADMIN) and first production deploy on the owner's Vercel
-account, both created from this machine — see `.env.local` for credentials.
-Outbound Postgres (5432/6543) is blocked on this network; apply one-off SQL via
-the dashboard SQL editor or a temporary Edge Function (precedent: the sql-runner
-used today, deleted after use).
+`admin1@svs.local` SUPER_ADMIN), created and verified from this machine — see
+`.env.local` for credentials. A Vercel production deploy was made the same day and
+**taken down at the owner's request** (project deleted; only Supabase remains).
+Run locally with `npm run dev`. Outbound Postgres (5432/6543) is blocked on this
+network; apply one-off SQL via the dashboard SQL editor or a temporary Edge
+Function (precedent: the sql-runner used today, deleted after use).
 
 ## Stack
 

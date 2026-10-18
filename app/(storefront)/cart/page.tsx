@@ -50,7 +50,7 @@ export default async function CartPage() {
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6">
       <h1 className="font-serif text-3xl text-wine-900">Your cart</h1>
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_340px]">

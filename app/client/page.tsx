@@ -174,7 +174,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1 flex-col bg-ivory-50">
-      <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">{children}</div>
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-16 sm:px-6">{children}</div>
     </div>
   );
 }

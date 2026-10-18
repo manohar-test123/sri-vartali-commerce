@@ -33,7 +33,7 @@ export default async function ClientInventoryPage({
   const outCount = rows.filter((r) => r.quantity - r.reservedQuantity <= 0).length;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-[1440px] px-4 py-8">
       <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Catalog</p>
       <h1 className="mt-1 font-serif text-3xl text-wine-900">Inventory</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-wine-900/70">

@@ -42,6 +42,18 @@ Run locally with `npm run dev`. Outbound Postgres (5432/6543) is blocked on this
 network; apply one-off SQL via the dashboard SQL editor or a temporary Edge
 Function (precedent: the sql-runner used today, deleted after use).
 
+**Phase 17 (2026-10-11, local-only):** storefront UX pass at the owner's request —
+(1) header rail highlights the active route (`components/storefront/header-nav.tsx`);
+(2) **Track Order removed everywhere** (page, sitemap entry, `getTrackOrderView`;
+the public `/order/<n>` page and the client dashboard remain the status views);
+(3) **Buy Now removed** (button, `svs_buy_now` cookie, checkout buy-now mode) and
+replaced on the product page by **Buy via WhatsApp** — the deep link prefills the
+selected product, variant and live quantity (`buildProductWhatsAppMessage`); the
+mobile contact dock yields its bottom bar to the product's sticky purchase bar;
+(4) containers widened `max-w-6xl` → `max-w-[1440px]` across storefront, client
+and admin shells; (5) brand logo (`public/brand/logo.svg`, SV monogram placeholder
+until the owner's artwork lands) in header and footer.
+
 ## Stack
 
 Next.js (App Router) · TypeScript · Tailwind CSS · Supabase (PostgreSQL, Auth, RLS) ·

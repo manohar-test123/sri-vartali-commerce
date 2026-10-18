@@ -17,8 +17,6 @@ export interface VerifiedCheckout {
   totals: QuoteTotals;
   contact: ContactInput;
   address: AddressInput;
-  /** Which source the verified quote came from (§19). */
-  mode: "buy-now" | "cart";
 }
 
 export type CheckoutReviewResult =

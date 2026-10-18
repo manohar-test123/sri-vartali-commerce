@@ -44,7 +44,7 @@ export default async function ClientOrdersPage({
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-[1440px] px-4 py-8">
       <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Orders</p>
       <h1 className="mt-1 font-serif text-3xl text-wine-900">Orders</h1>
 

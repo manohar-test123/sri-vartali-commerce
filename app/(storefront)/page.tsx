@@ -76,7 +76,7 @@ export default async function HomePage() {
     <div className="flex flex-1 flex-col">
       {/* Hero */}
       <section className="border-b border-wine-900/10 bg-gradient-to-b from-wine-50 to-ivory-100">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center px-4 py-20 text-center sm:px-6 sm:py-28">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center px-4 py-20 text-center sm:px-6 sm:py-28">
           <p className="text-xs uppercase tracking-[0.3em] text-gold-600">
             Sri Vartali Sarees
           </p>
@@ -106,7 +106,7 @@ export default async function HomePage() {
 
       {/* Shop by Collection (§41) */}
       {collections.length > 0 ? (
-        <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
+        <section className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6">
           <SectionHeading
             kicker="Curated edits"
             title="Shop by collection"
@@ -131,7 +131,7 @@ export default async function HomePage() {
 
       {/* New Arrivals */}
       {newArrivals.length > 0 ? (
-        <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
+        <section className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6">
           <SectionHeading
             kicker="Fresh in"
             title="New arrivals"
@@ -149,7 +149,7 @@ export default async function HomePage() {
           </div>
         </section>
       ) : (
-        <section className="mx-auto w-full max-w-6xl px-4 py-20 text-center sm:px-6">
+        <section className="mx-auto w-full max-w-[1440px] px-4 py-20 text-center sm:px-6">
           <p className="font-serif text-2xl text-wine-900">The atelier is stocking</p>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-wine-900/60">
             The first pieces are being photographed and priced. Join the shop
@@ -160,7 +160,7 @@ export default async function HomePage() {
 
       {/* Brand story */}
       <section className="border-y border-wine-900/10 bg-wine-900 text-ivory-100">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-16 sm:grid-cols-2 sm:px-6">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-16 sm:grid-cols-2 sm:px-6">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-gold-300">
               Our story
@@ -183,7 +183,7 @@ export default async function HomePage() {
 
       {/* Shop by Fabric */}
       {fabrics.length > 0 ? (
-        <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
+        <section className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6">
           <SectionHeading kicker="By material" title="Shop by fabric" />
           <ul className="flex flex-wrap gap-3">
             {fabrics.map((f) => (
@@ -202,7 +202,7 @@ export default async function HomePage() {
 
       {/* Shop by Occasion */}
       {occasions.length > 0 ? (
-        <section className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6">
+        <section className="mx-auto w-full max-w-[1440px] px-4 pb-14 sm:px-6">
           <SectionHeading kicker="Dress for it" title="Shop by occasion" />
           <ul className="flex flex-wrap gap-3">
             {occasions.map((o) => (
@@ -222,7 +222,7 @@ export default async function HomePage() {
       {/* Featured Collection */}
       {featured ? (
         <section className="border-t border-wine-900/10 bg-ivory-50">
-          <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
+          <div className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6">
             <SectionHeading
               kicker="Featured edit"
               title={featured.name}
@@ -247,7 +247,7 @@ export default async function HomePage() {
       ) : null}
 
       {/* Concierge strip */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-14 text-center sm:px-6">
+      <section className="mx-auto w-full max-w-[1440px] px-4 py-14 text-center sm:px-6">
         <p className="font-serif text-2xl text-wine-900">Not sure what to choose?</p>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-wine-900/60">
           Every listing names its fabric, weave and measurements — from{" "}

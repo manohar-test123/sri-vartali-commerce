@@ -1,26 +1,42 @@
 "use client";
 
 /**
- * §13 / §18 / §19 purchase block: variant pick, quantity, Add to Cart and
- * Buy Now. All pricing and stock shown here is display-only; the server
- * actions re-validate everything before anything is stored (§22).
+ * §13 / §18 purchase block: variant pick, quantity, Add to Cart and
+ * Buy via WhatsApp. All pricing and stock shown here is display-only; the
+ * server actions re-validate everything before anything is stored (§22).
+ * The WhatsApp deep link is informational — it prefills this product,
+ * variant and quantity into a chat; the supplier confirms from there.
  */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { addToCart, buyNow } from "@/lib/cart/actions";
+import { WhatsAppIcon } from "@/components/storefront/contact-dock";
+import { addToCart } from "@/lib/cart/actions";
+import { buildProductWhatsAppMessage } from "@/lib/cart/whatsapp";
+import { buildWhatsAppUrl } from "@/lib/orders/whatsapp";
 
 export interface AddableVariant {
   id: string;
   sku: string;
   name: string | null;
   priceLabel: string;
+  /** Numeric price for the WhatsApp message's math. */
+  pricePaise: number;
   available: number;
 }
 
-export function AddToCart({ variants }: { variants: AddableVariant[] }) {
+export function AddToCart({
+  variants,
+  product,
+  storeNumber,
+}: {
+  variants: AddableVariant[];
+  product: { name: string; productCode: string };
+  /** Supplier WhatsApp number (settings → env); null hides the button. */
+  storeNumber: string | null;
+}) {
   const router = useRouter();
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
@@ -30,9 +46,27 @@ export function AddToCart({ variants }: { variants: AddableVariant[] }) {
   const [pending, startTransition] = useTransition();
 
   const selectable = variants.filter((v) => v.available > 0);
-  const selected = variants.find((v) => v.id === variantId) ?? null;
+  const selected =
+    variants.find((v) => v.id === variantId) ??
+    selectable[0] ??
+    variants[0] ??
+    null;
   const maxQty = selected ? selected.available : 0;
   const soldOut = selectable.length === 0;
+
+  const whatsappUrl =
+    selected && storeNumber && !soldOut
+      ? buildWhatsAppUrl(
+          storeNumber,
+          buildProductWhatsAppMessage({
+            productName: product.name,
+            productCode: product.productCode,
+            variantName: selected.name,
+            quantity,
+            unitPricePaise: selected.pricePaise,
+          }),
+        )
+      : null;
 
   function pick(id: string) {
     setVariantId(id);
@@ -41,28 +75,15 @@ export function AddToCart({ variants }: { variants: AddableVariant[] }) {
   }
 
   function handleAdd() {
+    if (!selected) return;
     setFeedback(null);
     startTransition(async () => {
-      const result = await addToCart(variantId, quantity);
+      const result = await addToCart(selected.id, quantity);
       if (result.ok) {
         setFeedback({ kind: "ok", text: "Added to your cart." });
         router.refresh(); // header badge + cart page pick up the new count
       } else {
         setFeedback({ kind: "error", text: result.error });
-      }
-    });
-  }
-
-  function handleBuyNow() {
-    setFeedback(null);
-    startTransition(async () => {
-      try {
-        await buyNow(variantId, quantity); // redirects to /checkout on success
-      } catch (error) {
-        setFeedback({
-          kind: "error",
-          text: error instanceof Error ? error.message : "Buy Now failed.",
-        });
       }
     });
   }
@@ -82,11 +103,11 @@ export function AddToCart({ variants }: { variants: AddableVariant[] }) {
                   key={v.id}
                   type="button"
                   role="radio"
-                  aria-checked={v.id === variantId}
+                  aria-checked={v.id === selected?.id}
                   disabled={disabled}
                   onClick={() => pick(v.id)}
                   className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                    v.id === variantId
+                    v.id === selected?.id
                       ? "border-wine-900 bg-wine-900 text-ivory-50"
                       : "border-wine-900/20 bg-white text-wine-900 hover:border-wine-900/50"
                   } ${disabled ? "cursor-not-allowed opacity-40 line-through" : ""}`}
@@ -140,14 +161,17 @@ export function AddToCart({ variants }: { variants: AddableVariant[] }) {
         >
           {pending ? "Adding…" : "Add to Cart"}
         </button>
-        <button
-          type="button"
-          disabled={soldOut || pending}
-          onClick={handleBuyNow}
-          className="rounded-full bg-gold-500 px-6 py-2.5 text-sm font-semibold text-wine-900 transition-colors hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Buy Now
-        </button>
+        {whatsappUrl ? (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-full bg-[#25D366] px-6 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+          >
+            <WhatsAppIcon className="h-5 w-5" />
+            Buy via WhatsApp
+          </a>
+        ) : null}
       </div>
 
       {feedback ? (
@@ -176,7 +200,7 @@ export function AddToCart({ variants }: { variants: AddableVariant[] }) {
           is never permanently obscured. */}
       <div className="h-14 sm:hidden" aria-hidden />
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-wine-900/10 bg-ivory-50/95 px-4 py-2.5 backdrop-blur sm:hidden">
-        <div className="mx-auto flex max-w-6xl items-center gap-3">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-3">
           <span
             className="min-w-0 flex-1 truncate text-sm font-semibold text-wine-900"
             aria-hidden
@@ -190,16 +214,19 @@ export function AddToCart({ variants }: { variants: AddableVariant[] }) {
             onClick={handleAdd}
             className="rounded-full border border-wine-900 px-4 py-2 text-sm font-medium text-wine-900 transition-colors hover:bg-wine-900 hover:text-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {pending ? "Adding…" : "Add to Cart"}
+            {pending ? "Adding…" : "Add"}
           </button>
-          <button
-            type="button"
-            disabled={soldOut || pending}
-            onClick={handleBuyNow}
-            className="rounded-full bg-gold-500 px-4 py-2 text-sm font-semibold text-wine-900 transition-colors hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Buy Now
-          </button>
+          {whatsappUrl ? (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
+            >
+              <WhatsAppIcon className="h-4 w-4" />
+              WhatsApp
+            </a>
+          ) : null}
         </div>
       </div>
     </section>

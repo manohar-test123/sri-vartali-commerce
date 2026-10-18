@@ -27,7 +27,7 @@ import {
   type AddressInput,
 } from "@/lib/checkout/address";
 import { getCheckoutView } from "@/lib/cart/queries";
-import { clearBuyNow, readCartToken } from "@/lib/cart/cookies";
+import { readCartToken } from "@/lib/cart/cookies";
 import { createAdminClient } from "@/lib/db/admin";
 import {
   canAdvanceFulfilment,
@@ -149,8 +149,7 @@ export async function placeOrderAction(
     throw new Error(`place_order: ${message}`);
   }
 
-  // Success: the checkout source is consumed (§18/§19).
-  await clearBuyNow();
+  // Success: the checkout cart is consumed (§18).
   const token = await readCartToken();
   if (token) {
     const { data: cart } = await admin

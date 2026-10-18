@@ -8,6 +8,7 @@ import {
 } from "@/components/storefront/contact-dock";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { getCartCount } from "@/lib/cart/queries";
+import { isSupabaseConfigured } from "@/lib/env";
 import { resolveStoreContact } from "@/lib/store/contact";
 import { listStorefrontCategories } from "@/lib/storefront/queries";
 
@@ -16,7 +17,9 @@ import { listStorefrontCategories } from "@/lib/storefront/queries";
  * search, cart badge and wishlist; footer keeps only links that resolve
  * today — info pages (/about, /contact, …) land with their content in a
  * later phase. A persistent WhatsApp/phone contact dock rides along on
- * every page when the supplier number is configured.
+ * every page when the supplier number is configured. A deployment without
+ * Supabase env vars renders an explicit setup banner instead of errors
+ * (README invariant: degrade, never crash).
  */
 
 export default async function StorefrontLayout({
@@ -24,18 +27,20 @@ export default async function StorefrontLayout({
 }: {
   children: ReactNode;
 }) {
+  const supabaseConfigured = isSupabaseConfigured();
+
   let categories: Awaited<ReturnType<typeof listStorefrontCategories>> = [];
   try {
     categories = await listStorefrontCategories();
   } catch {
-    // Supabase not configured (e.g. CI build): render the shell unpopulated.
+    // Supabase unreachable: render the shell unpopulated.
   }
 
   let cartCount = 0;
   try {
     cartCount = await getCartCount();
   } catch {
-    // Same CI-build fallback as above.
+    // Same fallback as above.
   }
 
   // Soft read: hides the dock + footer contacts when no number is set.
@@ -43,6 +48,16 @@ export default async function StorefrontLayout({
 
   return (
     <>
+      {!supabaseConfigured ? (
+        <p
+          role="alert"
+          className="border-b border-gold-300 bg-gold-100/70 px-4 py-2 text-center text-xs leading-5 text-wine-900/80"
+        >
+          Store data is unavailable — this deployment is missing its Supabase
+          environment variables. The shop appears automatically once they are
+          configured.
+        </p>
+      ) : null}
       {/* §49 keyboard navigation: first Tab stop, hidden until focused. */}
       <a
         href="#main-content"

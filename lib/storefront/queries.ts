@@ -10,6 +10,7 @@
  */
 
 import { createClient as createServerClient } from "@/lib/db/server";
+import { isSupabaseConfigured } from "@/lib/env";
 import { parseSchema } from "@/lib/catalog/attributes";
 
 import type { CategoryNode } from "@/lib/storefront/search";
@@ -183,6 +184,9 @@ function toSummary(
 export async function listPublishedProducts(): Promise<
   StoreProductSummary[]
 > {
+  // Unconfigured env (e.g. a preview deployment without Supabase vars)
+  // renders the shell empty instead of 500-ing — README setup invariant.
+  if (!isSupabaseConfigured()) return [];
   const supabase = await createServerClient();
 
   const { data: collections, error: collErr } = await supabase
@@ -231,6 +235,7 @@ export async function listPublishedProducts(): Promise<
  *  attribute_schema rides along — §40 category-specific filters generate
  *  from it. */
 export async function listStorefrontCategories(): Promise<CategoryNode[]> {
+  if (!isSupabaseConfigured()) return [];
   const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("categories")
@@ -256,6 +261,7 @@ export interface CollectionInfo extends RawCollectionRow {
 export async function listStorefrontCollections(): Promise<
   CollectionInfo[]
 > {
+  if (!isSupabaseConfigured()) return [];
   const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("collections")
@@ -322,6 +328,7 @@ export interface StorefrontProductBundle {
 export async function getPublishedProductBySlug(
   slug: string,
 ): Promise<StorefrontProductBundle | null> {
+  if (!isSupabaseConfigured()) return null;
   const supabase = await createServerClient();
 
   const { data: product, error } = await supabase

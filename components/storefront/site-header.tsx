@@ -2,14 +2,36 @@
  * Storefront header (§10-§11): announcement bar, logo + wordmark, search,
  * wishlist, cart badge and a category rail with active-route highlighting.
  * Server-rendered from live categories; the search input is a plain GET
- * form so it works without JavaScript.
+ * form so it works without JavaScript. The rail lists only categories the
+ * launch store actually sells (navVisibleCategories — Phase 19).
  */
 
 import Link from "next/link";
 
 import { HeaderNav } from "@/components/storefront/header-nav";
 import { WishlistBadge } from "@/components/storefront/wishlist-badge";
+import { navVisibleCategories } from "@/lib/storefront/queries";
 import type { CategoryNode } from "@/lib/storefront/search";
+
+/** Boutique bag glyph — replaces the emoji cart marker; stroked to match
+ *  the contact dock's icon weight and scale with the text color. */
+export function BagIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M6.5 7.5h11l-.9 12a1.8 1.8 0 0 1-1.8 1.6H9.2a1.8 1.8 0 0 1-1.8-1.6l-.9-12Z" />
+      <path d="M9 10V6.2a3 3 0 0 1 6 0V10" />
+    </svg>
+  );
+}
 
 export function SiteHeader({
   categories,
@@ -19,7 +41,7 @@ export function SiteHeader({
   /** Total units in the server-side cart; fetched by the layout. */
   cartCount?: number;
 }) {
-  const top = categories.filter((c) => c.parentId === null);
+  const top = navVisibleCategories(categories);
 
   return (
     <header className="sticky top-0 z-40 border-b border-wine-900/10 bg-ivory-50/95 backdrop-blur">
@@ -75,7 +97,7 @@ export function SiteHeader({
             href="/cart"
             className="relative flex items-center gap-1.5 text-wine-900/70 transition-colors hover:text-wine-900"
           >
-            <span aria-hidden>🛍</span>
+            <BagIcon className="h-[22px] w-[22px]" />
             <span className="hidden sm:inline">Cart</span>
             {cartCount > 0 ? (
               <span className="rounded-full bg-wine-900 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-ivory-50">

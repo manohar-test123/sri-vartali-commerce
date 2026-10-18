@@ -29,6 +29,19 @@ Phase 1 (foundation) complete — app scaffold, design tokens, Supabase client l
 auth with role gates, database schema v1 (RLS on every table), CI. Phases 2-11 per
 the build spec: [`Sri_Vartali_AI_Agent_Build_Spec.md`](./Sri_Vartali_AI_Agent_Build_Spec.md).
 
+**Phase 16 (2026-10-10, local-only):** cart "Buy via WhatsApp" handoff (server-quoted
+cart prefilled into a wa.me chat — `lib/cart/whatsapp.ts`), persistent supplier
+contact dock + footer contacts (`components/storefront/contact-dock.tsx`,
+`lib/store/contact.ts`; number resolves from `store_settings.whatsapp_store_number`
+→ `NEXT_PUBLIC_WHATSAPP_STORE_NUMBER`). Fresh Supabase project
+`sri-vartali-commerce` (all six migrations + sample catalog seed +
+`admin1@svs.local` SUPER_ADMIN), created and verified from this machine — see
+`.env.local` for credentials. A Vercel production deploy was made the same day and
+**taken down at the owner's request** (project deleted; only Supabase remains).
+Run locally with `npm run dev`. Outbound Postgres (5432/6543) is blocked on this
+network; apply one-off SQL via the dashboard SQL editor or a temporary Edge
+Function (precedent: the sql-runner used today, deleted after use).
+
 ## Stack
 
 Next.js (App Router) · TypeScript · Tailwind CSS · Supabase (PostgreSQL, Auth, RLS) ·

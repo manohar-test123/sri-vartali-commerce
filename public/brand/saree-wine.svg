@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img" aria-label="Wine silk saree placeholder">
+  <defs>
+    <linearGradient id="drape" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b1a2e"/>
+      <stop offset="0.55" stop-color="#43111f"/>
+      <stop offset="1" stop-color="#2d0a14"/>
+    </linearGradient>
+    <linearGradient id="zari" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8c877"/>
+      <stop offset="1" stop-color="#b98f3e"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#drape)"/>
+  <path d="M0 520 C 160 460, 300 640, 600 560 L 600 800 L 0 800 Z" fill="#4c1424" opacity="0.7"/>
+  <path d="M0 640 C 200 600, 380 720, 600 660 L 600 800 L 0 800 Z" fill="url(#zari)" opacity="0.85"/>
+  <rect x="24" y="24" width="552" height="752" fill="none" stroke="url(#zari)" stroke-width="3" opacity="0.6"/>
+  <rect x="34" y="34" width="532" height="732" fill="none" stroke="#e8c877" stroke-width="1" opacity="0.35"/>
+  <circle cx="150" cy="220" r="5" fill="#e8c877" opacity="0.8"/>
+  <circle cx="230" cy="150" r="4" fill="#e8c877" opacity="0.6"/>
+  <circle cx="310" cy="240" r="5" fill="#e8c877" opacity="0.75"/>
+  <circle cx="400" cy="160" r="4" fill="#e8c877" opacity="0.6"/>
+  <circle cx="460" cy="300" r="5" fill="#e8c877" opacity="0.8"/>
+  <circle cx="120" cy="360" r="4" fill="#e8c877" opacity="0.5"/>
+  <circle cx="370" cy="380" r="4" fill="#e8c877" opacity="0.55"/>
+</svg>

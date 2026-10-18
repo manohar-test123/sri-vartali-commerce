@@ -1,15 +1,22 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import {
+  ContactDock,
+  PhoneIcon,
+  WhatsAppIcon,
+} from "@/components/storefront/contact-dock";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { getCartCount } from "@/lib/cart/queries";
+import { resolveStoreContact } from "@/lib/store/contact";
 import { listStorefrontCategories } from "@/lib/storefront/queries";
 
 /**
  * Storefront shell (§7 public routes): header with live category rail,
  * search, cart badge and wishlist; footer keeps only links that resolve
  * today — info pages (/about, /contact, …) land with their content in a
- * later phase.
+ * later phase. A persistent WhatsApp/phone contact dock rides along on
+ * every page when the supplier number is configured.
  */
 
 export default async function StorefrontLayout({
@@ -30,6 +37,9 @@ export default async function StorefrontLayout({
   } catch {
     // Same CI-build fallback as above.
   }
+
+  // Soft read: hides the dock + footer contacts when no number is set.
+  const contact = await resolveStoreContact();
 
   return (
     <>
@@ -52,6 +62,26 @@ export default async function StorefrontLayout({
               Handpicked sarees and ethnic wear, curated for celebration.
               Every piece is chosen slowly and photographed honestly.
             </p>
+            {contact ? (
+              <div className="mt-4 flex flex-col gap-2 text-sm">
+                <a
+                  href={contact.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-fit items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 font-medium text-white transition hover:brightness-95"
+                >
+                  <WhatsAppIcon className="h-4 w-4" />
+                  Chat on WhatsApp
+                </a>
+                <a
+                  href={contact.phoneUrl}
+                  className="inline-flex w-fit items-center gap-2 rounded-full border border-wine-900/20 px-4 py-2 font-medium text-wine-900 transition hover:border-wine-900/40"
+                >
+                  <PhoneIcon className="h-4 w-4" />
+                  {contact.displayNumber}
+                </a>
+              </div>
+            ) : null}
           </div>
           <nav aria-label="Shop" className="text-sm">
             <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
@@ -88,6 +118,9 @@ export default async function StorefrontLayout({
           © {new Date().getFullYear()} Sri Vartali Sarees
         </p>
       </footer>
+      {contact ? <ContactDock whatsappUrl={contact.whatsappUrl} phoneUrl={contact.phoneUrl} /> : null}
+      {/* Clearance for the mobile contact bar so it never covers content. */}
+      {contact ? <div aria-hidden className="h-12 sm:hidden" /> : null}
     </>
   );
 }

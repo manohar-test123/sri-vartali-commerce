@@ -2,13 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CartLineControls } from "@/components/storefront/cart-line-controls";
+import { WhatsAppIcon } from "@/components/storefront/contact-dock";
+import { buildCartWhatsAppMessage } from "@/lib/cart/whatsapp";
 import { discountPercent, formatPaise } from "@/lib/catalog/money";
 import { getCartView } from "@/lib/cart/queries";
+import { resolveStoreContact } from "@/lib/store/contact";
+import { buildWhatsAppUrl } from "@/lib/orders/whatsapp";
 
 /**
  * /cart (spec §18): multi-product, multi-quantity. Totals here are an
  * estimate rendered from live rows; the binding calculation happens at
  * checkout against re-fetched state (§22) — the page says exactly that.
+ * "Buy via WhatsApp" is the primary handoff: it prefills the cart into a
+ * chat with the supplier; checkout stays as the tracked-order path.
  */
 
 export const dynamic = "force-dynamic";
@@ -20,8 +26,7 @@ export const metadata: Metadata = {
 export default async function CartPage() {
   const { quote, meta } = await getCartView();
 
-  if (quote.lines.length === 0) {
-    return (
+  if (quote.lines.length === 0) {    return (
       <div className="mx-auto w-full max-w-3xl px-4 py-16 text-center sm:px-6">
         <h1 className="font-serif text-3xl text-wine-900">Your cart</h1>
         <p className="mt-3 text-sm text-wine-900/60">
@@ -38,6 +43,11 @@ export default async function CartPage() {
   }
 
   const metaByVariant = new Map(meta.map((m) => [m.variantId, m]));
+
+  const contact = await resolveStoreContact();
+  const buyViaWhatsAppUrl = contact
+    ? buildWhatsAppUrl(contact.number, buildCartWhatsAppMessage(quote))
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
@@ -142,9 +152,30 @@ export default async function CartPage() {
             Estimate from live prices — your order is verified and totalled
             again at checkout before anything is placed.
           </p>
+          {buyViaWhatsAppUrl ? (
+            <>
+              <a
+                href={buyViaWhatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 text-sm font-semibold text-white transition hover:brightness-95"
+              >
+                <WhatsAppIcon className="h-5 w-5" />
+                Buy via WhatsApp
+              </a>
+              <p className="mt-2 text-center text-[11px] leading-4 text-wine-900/50">
+                Opens WhatsApp with your sarees, quantities and totals
+                prefilled — just press send and we take it from there.
+              </p>
+            </>
+          ) : null}
           <Link
             href="/checkout"
-            className="mt-4 block rounded-full bg-wine-900 py-2.5 text-center text-sm font-medium text-ivory-50 transition-colors hover:bg-wine-800"
+            className={
+              buyViaWhatsAppUrl
+                ? "mt-3 block rounded-full border border-wine-900/20 py-2.5 text-center text-sm font-medium text-wine-900 transition-colors hover:border-wine-900/40"
+                : "mt-4 block rounded-full bg-wine-900 py-2.5 text-center text-sm font-medium text-ivory-50 transition-colors hover:bg-wine-800"
+            }
           >
             Proceed to checkout
           </Link>

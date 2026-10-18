@@ -208,10 +208,13 @@ export default async function AccountOrderDetailPage({ params }: PageProps) {
 
       <p className="mt-6 text-xs text-wine-900/50">
         Status giving you trouble?{" "}
-        <Link href="/track-order" className="underline underline-offset-2 hover:text-wine-900">
-          Track this order
+        <Link
+          href={`/order/${order.order_number}`}
+          className="underline underline-offset-2 hover:text-wine-900"
+        >
+          View the shared order page
         </Link>{" "}
-        for the step-by-step progress view.
+        for the itemised summary and current statuses.
       </p>
     </div>
   );

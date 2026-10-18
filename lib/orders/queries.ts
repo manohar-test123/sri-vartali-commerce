@@ -12,7 +12,6 @@
 
 import { createAdminClient } from "@/lib/db/admin";
 import { matchesOrderSearch } from "@/lib/orders/search";
-import { normalizeIndianPhone } from "@/lib/checkout/address";
 import type { AddressInput } from "@/lib/checkout/address";
 import type {
   FulfilmentStatus,
@@ -97,59 +96,6 @@ export async function getLatestShipment(
     .maybeSingle();
   if (error) throw new Error(`shipments: ${error.message}`);
   return (data as ShipmentRow | null) ?? null;
-}
-
-export interface TrackOrderView {
-  order_number: string;
-  order_status: OrderStatus;
-  payment_status: PaymentStatus;
-  fulfilment_status: FulfilmentStatus;
-  created_at: string;
-  shipment: ShipmentRow | null;
-}
-
-export type TrackOrderResult =
-  | { status: "not_found" }
-  | { status: "found"; view: TrackOrderView };
-
-/**
- * §37 track-order lookup: order number + the phone used at checkout. A
- * miss and a phone mismatch answer identically ("not_found") so the page
- * never confirms whether an order number exists — the sequential SVS-ORD
- * codes are guessable, the phone is the secret. Anonymous access rides the
- * admin client server-side, same as the public order page.
- */
-export async function getTrackOrderView(
-  orderNumber: string,
-  phone: string,
-): Promise<TrackOrderResult> {
-  await sweepExpiredReservations();
-  const normalized = normalizeIndianPhone(phone);
-  if (!normalized) return { status: "not_found" };
-
-  const admin = createAdminClient();
-  const { data: order, error } = await admin
-    .from("orders")
-    .select(
-      `id, order_number, phone, order_status, payment_status,
-       fulfilment_status, created_at`,
-    )
-    .eq("order_number", orderNumber)
-    .maybeSingle();
-  if (error) throw new Error(`track order: ${error.message}`);
-  if (!order || order.phone !== normalized) return { status: "not_found" };
-
-  return {
-    status: "found",
-    view: {
-      order_number: order.order_number,
-      order_status: order.order_status as OrderStatus,
-      payment_status: order.payment_status as PaymentStatus,
-      fulfilment_status: order.fulfilment_status as FulfilmentStatus,
-      created_at: order.created_at,
-      shipment: await getLatestShipment(order.id),
-    },
-  };
 }
 
 const ORDER_COLUMNS = `id, order_number, customer_id, customer_name, phone, email,

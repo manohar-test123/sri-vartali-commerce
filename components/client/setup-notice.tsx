@@ -4,7 +4,7 @@
  */
 export function SetupNotice({ title }: { title: string }) {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-[1440px] px-4 py-8">
       <h1 className="font-serif text-3xl text-wine-900">{title}</h1>
       <p className="mt-3 max-w-lg text-sm leading-6 text-wine-900/70">
         Supabase is not configured. Fill{" "}

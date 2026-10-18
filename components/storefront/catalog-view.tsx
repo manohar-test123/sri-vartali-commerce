@@ -119,7 +119,7 @@ export async function CatalogView({
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6">
       <noscript>
         {/* The mobile sheet needs JS — without it the sidebar stays put. */}
         <style>{`.filters-aside { display: block !important; }`}</style>

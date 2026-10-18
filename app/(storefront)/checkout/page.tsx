@@ -29,7 +29,7 @@ export default async function CheckoutPage() {
   for (const m of view.meta) lineImages[m.variantId] = m.imageUrl;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6">
       <nav aria-label="Breadcrumb" className="mb-4 text-xs text-wine-900/50">
         <Link href="/cart" className="hover:text-wine-900">
           ← Back to cart
@@ -46,7 +46,6 @@ export default async function CheckoutPage() {
           lines={view.quote.lines}
           totals={view.quote.totals}
           issues={view.quote.issues}
-          mode={view.mode}
           lineImages={lineImages}
         />
       </div>

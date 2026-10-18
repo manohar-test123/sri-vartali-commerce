@@ -2,9 +2,9 @@
 
 /**
  * Checkout review action (spec §20–§22): validate the contact + address
- * server-side, then re-fetch the cart/buy-now source and rebuild the quote
- * from live catalog rows. This is the §22 pipeline through step 9 — order
- * creation (steps 10–16) is Phase 6 and will reuse exactly this quote.
+ * server-side, then re-fetch the cart and rebuild the quote from live
+ * catalog rows. This is the §22 pipeline through step 9 — order creation
+ * (steps 10–16) reuses exactly this quote.
  */
 
 import { getCheckoutView } from "@/lib/cart/queries";
@@ -63,7 +63,6 @@ export async function reviewCheckout(
         email: contact.email,
       },
       address: normalizedAddress(address),
-      mode: view.mode,
     },
   };
 }

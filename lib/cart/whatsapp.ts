@@ -5,10 +5,45 @@
  * comes from live rows, never the browser). No order exists yet; the
  * supplier confirms availability, shipping and payment in the chat that
  * follows. The §2 rule holds: the deep link prefills, the customer sends.
+ *
+ * buildProductWhatsAppMessage is the single-item sibling used by the
+ * product page's purchase block; it is also client-safe (pure values in,
+ * string out) so the live quantity/variant selection can rebuild the
+ * message as the customer changes it.
  */
 
 import { formatPaise } from "@/lib/catalog/money";
 import type { Quote } from "@/lib/checkout/quote";
+
+export interface ProductWhatsAppInput {
+  productName: string;
+  productCode: string;
+  variantName: string | null;
+  quantity: number;
+  unitPricePaise: number;
+}
+
+export function buildProductWhatsAppMessage(
+  input: ProductWhatsAppInput,
+): string {
+  const lines = [
+    "Hello Sri Vartali Sarees 👋",
+    "",
+    "I would like to buy this item from your website:",
+    "",
+    input.productName,
+    `Product ID: ${input.productCode}`,
+  ];
+  if (input.variantName) lines.push(`Variant: ${input.variantName}`);
+  lines.push(
+    `Qty: ${input.quantity}`,
+    `Unit price: ${formatPaise(input.unitPricePaise)}`,
+    `Estimated total: ${formatPaise(input.unitPricePaise * input.quantity)}`,
+    "",
+    "Please confirm availability and share payment details. Thank you!",
+  );
+  return lines.join("\n");
+}
 
 export function buildCartWhatsAppMessage(quote: Quote): string {
   const lines: string[] = [

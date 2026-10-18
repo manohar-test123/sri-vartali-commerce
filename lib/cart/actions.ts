@@ -7,13 +7,7 @@
  * the client's numbers are a suggestion, never a fact (§22).
  */
 
-import { redirect } from "next/navigation";
-
-import {
-  clearBuyNow,
-  ensureCartToken,
-  writeBuyNow,
-} from "@/lib/cart/cookies";
+import { ensureCartToken } from "@/lib/cart/cookies";
 import { createAdminClient } from "@/lib/db/admin";
 
 export type CartActionResult =
@@ -148,8 +142,6 @@ export async function addToCart(
     if (error) throw new Error(`cart_items insert: ${error.message}`);
   }
 
-  // The temporary buy-now cart is void once the real cart changes (§19).
-  await clearBuyNow();
   return { ok: true, message: null };
 }
 
@@ -174,7 +166,6 @@ export async function setQuantity(
       .eq("cart_id", cart.id)
       .eq("variant_id", variantId);
     if (error) throw new Error(`cart_items delete: ${error.message}`);
-    await clearBuyNow();
     return { ok: true, message: null };
   }
 
@@ -190,8 +181,6 @@ export async function setQuantity(
     .eq("cart_id", cart.id)
     .eq("variant_id", variantId);
   if (error) throw new Error(`cart_items update: ${error.message}`);
-
-  await clearBuyNow();
   return { ok: true, message: null };
 }
 
@@ -200,30 +189,4 @@ export async function removeItem(
   variantId: string,
 ): Promise<CartActionResult> {
   return setQuantity(variantId, 0);
-}
-
-/** §19 Buy Now: a temporary single-item cart, then straight to checkout. */
-export async function buyNow(
-  variantId: string,
-  quantity: number,
-): Promise<never> {
-  const validated = await validateLine(variantId, quantity);
-  if ("error" in validated) {
-    // Buy Now rides a redirect — surface the failure as a redirect to the
-    // product's page? Simplest honest path: back to cart with the message
-    // in the query string is overkill; throw so the action errors visibly.
-    throw new Error(validated.error);
-  }
-
-  await writeBuyNow({
-    variantId,
-    quantity: validated.quantity,
-  });
-  redirect("/checkout");
-}
-
-/** Leave the Buy Now path: drop the temporary cart and return to /cart. */
-export async function abandonBuyNow(): Promise<never> {
-  await clearBuyNow();
-  redirect("/cart");
 }

@@ -55,9 +55,19 @@ export default async function StorefrontLayout({
         {children}
       </main>
       <footer className="border-t border-wine-900/10 bg-ivory-50">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3 sm:px-6">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-12 sm:grid-cols-3 sm:px-6">
           <div>
-            <p className="font-serif text-xl text-wine-900">Sri Vartali</p>
+            <div className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brand/logo.svg"
+                alt=""
+                width={36}
+                height={36}
+                className="h-8 w-8 rounded-lg sm:h-9 sm:w-9"
+              />
+              <p className="font-serif text-xl text-wine-900">Sri Vartali</p>
+            </div>
             <p className="mt-2 max-w-xs text-sm leading-6 text-wine-900/60">
               Handpicked sarees and ethnic wear, curated for celebration.
               Every piece is chosen slowly and photographed honestly.
@@ -119,8 +129,6 @@ export default async function StorefrontLayout({
         </p>
       </footer>
       {contact ? <ContactDock whatsappUrl={contact.whatsappUrl} phoneUrl={contact.phoneUrl} /> : null}
-      {/* Clearance for the mobile contact bar so it never covers content. */}
-      {contact ? <div aria-hidden className="h-12 sm:hidden" /> : null}
     </>
   );
 }

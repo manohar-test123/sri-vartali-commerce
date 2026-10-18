@@ -31,8 +31,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${playfair.variable} h-full antialiased`}
+      // Browser extensions (Grammarly, WOT, dark-mode…) inject attributes on
+      // <html>/<body> before React hydrates; tolerate them silently. This
+      // only silences attribute mismatches on these two elements — never on
+      // the app tree itself.
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

@@ -18,7 +18,7 @@ import {
   type QuoteShippingSettings,
   type QuoteVariant,
 } from "@/lib/checkout/quote";
-import { readBuyNow, readCartToken } from "@/lib/cart/cookies";
+import { readCartToken } from "@/lib/cart/cookies";
 
 /** Display-only extras the quote lines don't carry (image for the cart UI). */
 export interface CartLineMeta {
@@ -219,15 +219,10 @@ export async function getCartView(): Promise<CartView> {
 }
 
 /**
- * /checkout view (§19): the buy-now temporary cart wins while it exists;
- * otherwise the DB cart. The mode rides along so the UI can say which.
+ * /checkout view (§19): the DB cart, quoted. (The old §19 buy-now
+ * temporary cart was removed with the Buy Now button — WhatsApp is the
+ * single-item handoff now, and it never needed server state.)
  */
-export async function getCheckoutView(): Promise<
-  CartView & { mode: "buy-now" | "cart" }
-> {
-  const buyNow = await readBuyNow();
-  if (buyNow) {
-    return { ...(await quoteLines([buyNow])), mode: "buy-now" };
-  }
-  return { ...(await getCartView()), mode: "cart" };
+export async function getCheckoutView(): Promise<CartView> {
+  return getCartView();
 }

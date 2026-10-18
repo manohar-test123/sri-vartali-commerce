@@ -1,11 +1,13 @@
 /**
- * Storefront header (§10-§11): announcement bar, wordmark, search, wishlist
- * and a category rail. Server-rendered from live categories; the search
- * input is a plain GET form so it works without JavaScript.
+ * Storefront header (§10-§11): announcement bar, logo + wordmark, search,
+ * wishlist, cart badge and a category rail with active-route highlighting.
+ * Server-rendered from live categories; the search input is a plain GET
+ * form so it works without JavaScript.
  */
 
 import Link from "next/link";
 
+import { HeaderNav } from "@/components/storefront/header-nav";
 import { WishlistBadge } from "@/components/storefront/wishlist-badge";
 import type { CategoryNode } from "@/lib/storefront/search";
 
@@ -24,12 +26,23 @@ export function SiteHeader({
       <p className="bg-wine-900 py-1.5 text-center text-[11px] tracking-[0.18em] text-ivory-100">
         HANDPICKED ETHNIC WEAR · CRAFTED FOR CELEBRATION
       </p>
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
         <Link
           href="/"
-          className="font-serif text-2xl tracking-wide text-wine-900"
+          className="flex items-center gap-2.5"
+          aria-label="Sri Vartali — home"
         >
-          Sri Vartali
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/logo.svg"
+            alt=""
+            width={40}
+            height={40}
+            className="h-9 w-9 rounded-xl sm:h-10 sm:w-10"
+          />
+          <span className="font-serif text-2xl tracking-wide text-wine-900">
+            Sri Vartali
+          </span>
         </Link>
 
         <form
@@ -74,40 +87,14 @@ export function SiteHeader({
         </nav>
       </div>
 
-      <nav
-        aria-label="Categories"
-        className="mx-auto w-full max-w-6xl overflow-x-auto px-4 sm:px-6"
-      >
-        <ul className="flex items-center gap-5 pb-2.5 text-[13px] text-wine-900/70">
-          <li>
-            <Link href="/shop" className="whitespace-nowrap font-medium text-wine-900 hover:underline">
-              Shop all
-            </Link>
-          </li>
-          {top.map((c) => (
-            <li key={c.id}>
-              <Link href={`/category/${c.slug}`} className="whitespace-nowrap hover:underline">
-                {c.name}
-              </Link>
-            </li>
-          ))}
-          <li>
-            <Link href="/new-arrivals" className="whitespace-nowrap hover:underline">
-              New arrivals
-            </Link>
-          </li>
-          <li>
-            <Link href="/track-order" className="whitespace-nowrap hover:underline">
-              Track order
-            </Link>
-          </li>
-          <li>
-            <Link href="/account" className="whitespace-nowrap hover:underline">
-              Account
-            </Link>
-          </li>
-        </ul>
-      </nav>
+      <HeaderNav
+        items={[
+          { href: "/shop", label: "Shop all" },
+          ...top.map((c) => ({ href: `/category/${c.slug}`, label: c.name })),
+          { href: "/new-arrivals", label: "New arrivals" },
+          { href: "/account", label: "Account" },
+        ]}
+      />
     </header>
   );
 }

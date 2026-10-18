@@ -4,10 +4,18 @@
  * safe-area aware); desktop gets compact floating buttons in the bottom
  * right. Plain <a> links, so it works without JavaScript.
  *
+ * On product pages the mobile bar yields to the product's own sticky
+ * purchase bar (which carries a WhatsApp button) — only the desktop
+ * floaters ride along there.
+ *
  * Rendered by the storefront layout only when a supplier number is
  * configured; the layout adds a matching mobile spacer so the bar never
  * covers footer content.
  */
+
+"use client";
+
+import { usePathname } from "next/navigation";
 
 export function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -46,30 +54,36 @@ export function ContactDock({
   whatsappUrl: string;
   phoneUrl: string;
 }) {
+  const pathname = usePathname();
+  const productPage = pathname?.startsWith("/product") ?? false;
+
   return (
     <>
-      {/* Mobile: fixed two-button bottom bar (thumb reach). */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t border-wine-900/15 bg-ivory-50/95 backdrop-blur sm:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      >
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 bg-[#25D366] py-3 text-sm font-semibold text-white transition active:brightness-95"
+      {/* Mobile: fixed two-button bottom bar (thumb reach); the product
+          page's own sticky purchase bar takes this slot instead. */}
+      {productPage ? null : (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t border-wine-900/15 bg-ivory-50/95 backdrop-blur sm:hidden"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <WhatsAppIcon className="h-5 w-5" />
-          WhatsApp
-        </a>
-        <a
-          href={phoneUrl}
-          className="flex items-center justify-center gap-2 bg-wine-900 py-3 text-sm font-semibold text-ivory-50 transition active:bg-wine-800"
-        >
-          <PhoneIcon className="h-5 w-5" />
-          Call us
-        </a>
-      </div>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-[#25D366] py-3 text-sm font-semibold text-white transition active:brightness-95"
+          >
+            <WhatsAppIcon className="h-5 w-5" />
+            WhatsApp
+          </a>
+          <a
+            href={phoneUrl}
+            className="flex items-center justify-center gap-2 bg-wine-900 py-3 text-sm font-semibold text-ivory-50 transition active:bg-wine-800"
+          >
+            <PhoneIcon className="h-5 w-5" />
+            Call us
+          </a>
+        </div>
+      )}
 
       {/* Desktop: floating round buttons, bottom right. */}
       <div className="fixed bottom-6 right-6 z-40 hidden flex-col items-end gap-3 sm:flex">
@@ -92,6 +106,10 @@ export function ContactDock({
           <WhatsAppIcon className="h-7 w-7" />
         </a>
       </div>
+
+      {/* Clearance so the fixed mobile bar never covers footer content;
+          rendered only alongside it (skipped on product pages). */}
+      {productPage ? null : <div aria-hidden className="h-12 sm:hidden" />}
     </>
   );
 }

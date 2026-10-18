@@ -11,7 +11,6 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { abandonBuyNow } from "@/lib/cart/actions";
 import { reviewCheckout } from "@/lib/checkout/actions";
 import { placeOrderAction, type PlaceOrderResult } from "@/lib/orders/actions";
 import { formatPaise } from "@/lib/catalog/money";
@@ -26,7 +25,6 @@ interface CheckoutFormProps {
   lines: QuoteLine[];
   totals: QuoteTotals;
   issues: QuoteIssue[];
-  mode: "buy-now" | "cart";
   lineImages: Record<string, string | null>;
 }
 
@@ -39,7 +37,6 @@ export function CheckoutForm({
   lines,
   totals,
   issues,
-  mode,
   lineImages,
 }: CheckoutFormProps) {
   const router = useRouter();
@@ -206,19 +203,6 @@ export function CheckoutForm({
       {/* Stays mounted while verified so the place action receives the
           same FormData the review saw — hidden, not unmounted. */}
       <div className="space-y-8" hidden={verified !== null}>
-        {mode === "buy-now" ? (
-          <p className="rounded-xl border border-gold-300 bg-gold-100/60 px-4 py-3 text-sm text-wine-900/80">
-            Checking out with <strong>Buy Now</strong> — just this item.{" "}
-            <button
-              type="submit"
-              formAction={abandonBuyNow}
-              className="font-medium underline"
-            >
-              Checkout your full cart instead
-            </button>
-          </p>
-        ) : null}
-
         <fieldset className="space-y-4">
           <legend className="font-serif text-xl text-wine-900">Contact</legend>
           <div>

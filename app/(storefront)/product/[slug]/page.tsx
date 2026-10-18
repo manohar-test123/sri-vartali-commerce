@@ -12,6 +12,7 @@ import { WishlistToggle } from "@/components/storefront/wishlist-toggle";
 import { discountPercent, formatPaise } from "@/lib/catalog/money";
 import { effectiveSeo } from "@/lib/catalog/seo";
 import type { AttributeValues } from "@/lib/catalog/types";
+import { resolveStoreContact } from "@/lib/store/contact";
 import {
   getPublishedProductBySlug,
   listPublishedProducts,
@@ -19,8 +20,9 @@ import {
 
 /**
  * /product/[slug] (§13). Anon-visible rows only — RLS hides drafts, so a
- * missing/slug-typo renders 404. Variant pick, Add to Cart and Buy Now
- * (§18/§19) live in AddToCart; totals are always server-verified (§22).
+ * missing/slug-typo renders 404. Variant pick, Add to Cart and Buy via
+ * WhatsApp live in AddToCart; the deep link prefills this product,
+ * variant and quantity into the supplier's chat (§2 — it never sends).
  */
 export const dynamic = "force-dynamic";
 
@@ -102,6 +104,9 @@ export default async function ProductPage({
   const totalAvailable = bundle.variants.reduce((sum, v) => sum + v.available, 0);
   const soldOut = totalAvailable === 0;
 
+  // Soft read: the Buy via WhatsApp button hides when no number is set.
+  const contact = await resolveStoreContact();
+
   const allProducts = await listPublishedProducts();
   const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.categorySlug === bundle.categorySlug)
@@ -133,7 +138,7 @@ export default async function ProductPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6">
       <script
         type="application/ld+json"
         // Product structured data for search engines (§385 SEO direction).
@@ -263,8 +268,11 @@ export default async function ProductPage({
                 sku: v.sku,
                 name: v.name,
                 priceLabel: formatPaise(v.pricePaise),
+                pricePaise: v.pricePaise,
                 available: v.available,
               }))}
+              product={{ name: product.name, productCode: product.product_code }}
+              storeNumber={contact?.number ?? null}
             />
           ) : null}
 

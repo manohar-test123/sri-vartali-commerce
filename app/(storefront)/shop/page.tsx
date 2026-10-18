@@ -19,7 +19,7 @@ export default async function ShopPage({
   const params = await searchParams;
   return (
     <>
-      <header className="mx-auto w-full max-w-6xl px-4 pt-10 sm:px-6">
+      <header className="mx-auto w-full max-w-[1440px] px-4 pt-10 sm:px-6">
         <p className="text-[11px] uppercase tracking-[0.2em] text-gold-600">
           The shop
         </p>

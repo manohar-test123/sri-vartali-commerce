@@ -32,7 +32,7 @@ export function AdminShell({
 }) {
   return (
     <div className="flex flex-1 flex-col bg-ivory-50">
-      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6">
         <p className="text-xs uppercase tracking-[0.2em] text-gold-600">{area}</p>
         <h1 className="mt-2 font-serif text-3xl text-wine-900">{title}</h1>
         {intro ? (

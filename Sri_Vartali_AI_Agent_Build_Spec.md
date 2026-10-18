@@ -1,9 +1,42 @@
 # Sri Vartali Fashion Commerce Platform
 ## AI-Agent Build Specification
 
-**Version:** 3.0  
-**Launch brand:** Sri Vartali Sarees  
+**Version:** 3.1
+**Launch brand:** Sri Vartali Sarees
 **Architecture goal:** Launch as a premium saree store, but keep the platform generic enough to expand into dresses, kurtis, lehengas, blouses, dupattas, accessories, and other fashion categories without rebuilding the core system.
+
+---
+
+# Revision History
+
+**v3.1 — 2026-10-11 (Phases 16–17, owner-directed product changes).** This
+revision records what the platform actually ships today and the places where
+the owner overrode the original plan:
+
+- **Buy Now removed everywhere** (§19 rewritten): the product page's instant
+  path is now a **Buy via WhatsApp** deep link — no server state, no
+  temporary cart. Checkout remains the cart's tracked-order path.
+- **Track Order removed everywhere** (§7, §37, §60 updated): the page, route,
+  sitemap entry and lookup were deleted. Order status lives on the public
+  `/order/[orderNumber]` page, in the client dashboard, and in WhatsApp
+  tracking messages.
+- **WhatsApp-first commerce added** (§2, §13, §18, §48): the cart's primary
+  CTA is **Buy via WhatsApp** (server-quoted cart prefilled into the
+  supplier chat); product pages prefill product + variant + live quantity;
+  a persistent WhatsApp/phone contact dock rides every storefront page.
+- **Chrome:** brand logo in header/footer (`public/brand/logo.svg`,
+  placeholder until owner artwork), active-route highlighting in the header
+  rail, containers widened to 1440px.
+- **Infra:** fresh Supabase project `sri-vartali-commerce`
+  (Mumbai, ref `ifhllndlljxppgjukcgu`, owner: Pushpak) fully migrated,
+  seeded and SUPER_ADMIN-bootstrapped; a Vercel production deploy verified
+  end-to-end and was then **taken down at the owner's request** — the site
+  currently runs local-only. Outbound Postgres (5432/6543) is blocked on
+  the owner's network; one-off SQL rides the dashboard or a temporary Edge
+  Function.
+
+**v3.0 — 2026-10-02.** Original 63-section plan; Phases 1–15 built per this
+version (see §54 for the phase log, which v3.1 extends through Phase 17).
 
 ---
 
@@ -109,6 +142,22 @@ AUTOMATIC WHATSAPP:
 ```
 
 Important: WhatsApp deep links can prefill text, but the customer must tap **Send**.
+
+**v3.1 addition — WhatsApp-first entry points.** Alongside the tracked flow
+above (which is unchanged and remains the only path that creates an order),
+customers now have two direct supplier-chat handoffs that create **no** order
+row — they are inquiries the supplier converts in chat:
+
+```text
+CART   → "Buy via WhatsApp"  → prefilled server-quoted cart (items, IDs,
+                                variants, qty, totals)
+PRODUCT→ "Buy via WhatsApp"  → prefilled product + variant + live quantity
+```
+
+Rule 9 ("create the order before opening WhatsApp") applies to order
+placement; these handoffs deliberately happen **before** any order exists,
+so they never violate it. If the chat converts, the supplier directs the
+customer through checkout, or places the order from the dashboard.
 
 ---
 
@@ -230,6 +279,15 @@ Address/PIN     Verified India PIN reference data
 Source Control  GitHub
 ```
 
+**v3.1 implementation note:** shipped stack matches the above except
+Radix UI — the custom Sri Vartali components (dialogs, radios, sticky bars,
+contact dock) cover the patterns without a primitives dependency; the
+`lib/` layer grew `cart/`, `orders/`, `checkout/`, `catalog/`, `reviews/`,
+`settings/`, `store/`, `security/`, `rate-limit` alongside the §50 sketch.
+WhatsApp ordering runs on wa.me deep links today; the Cloud API wiring
+(automation + webhooks) is built but unconfigured pending Meta credentials.
+Cloudinary likewise (placeholder SVGs ship in `public/brand/`).
+
 Avoid unnecessary complexity such as Kubernetes, microservices, Redis, Kafka, Elasticsearch, a separate Express backend, or GraphQL for this scale.
 
 ---
@@ -278,6 +336,8 @@ Client users must never see API secrets or developer-level credentials.
 
 # 7. Public Routes
 
+Live today (v3.1):
+
 ```text
 /
 /shop
@@ -291,13 +351,23 @@ Client users must never see API secrets or developer-level credentials.
 /cart
 /checkout
 /order/[orderNumber]
-/track-order
 /account/login
 /account
 /account/orders
 /account/orders/[id]
 /account/addresses
 /account/profile
+```
+
+Removed (v3.1, owner direction — see §37):
+
+```text
+/track-order            # page deleted Phase 17; 404s, sitemap entry gone
+```
+
+Future info pages (not yet built; footer defers to them):
+
+```text
 /about
 /contact
 /faq
@@ -436,7 +506,7 @@ Material/Fabric
 Variants
 Stock
 Add to Cart
-Buy Now
+Buy via WhatsApp      (v3.1: replaced "Buy Now" — §19)
 Delivery PIN Checker
 Description
 Attributes
@@ -676,21 +746,44 @@ Qty 1
 
 One checkout generates one Order ID containing multiple order items.
 
+**v3.1:** the cart's primary CTA is **Buy via WhatsApp** — the full
+server-quoted cart (names, IDs, variants, quantities, totals) is prefilled
+into the supplier's chat with no order created. "Proceed to checkout"
+remains as the secondary, tracked-order path (§2). Prices in the prefilled
+message come from the server quote, never the browser.
+
 ---
 
-# 19. Buy Now
+# 19. Buy Now — REMOVED (v3.1), replaced by Buy via WhatsApp
 
-Buy Now must not bypass checkout.
+**Original v3.0 plan** (Buy Now → temporary cart → checkout) shipped in
+Phase 5 and was **removed in Phase 17 at the owner's direction** — the
+button, the `svs_buy_now` cookie, the checkout buy-now mode and its
+abandon action are all gone from the codebase.
+
+What lives there now:
 
 ```text
 Product
-→ Buy Now
-→ Temporary cart with selected item
-→ Checkout
-→ Address validation
-→ Create order
-→ WhatsApp
+→ Buy via WhatsApp (green, with WhatsApp glyph)
+→ wa.me deep link to the single supplier number
+→ prefilled: product name, Product ID, variant, live quantity,
+   unit price, estimated total
+→ customer taps Send
+→ supplier confirms availability / payment in chat
 ```
+
+Properties of the replacement:
+
+- **No server state.** Unlike Buy Now it creates no cart, cookie or order —
+  it is a pure informational deep link (§2 v3.1 addition).
+- **Quantity- and variant-aware.** The message rebuilds live as the
+  customer changes either; prices are the server-rendered product prices.
+- **Single supplier number**, resolved once: `store_settings.whatsapp_store_number`
+  → `NEXT_PUBLIC_WHATSAPP_STORE_NUMBER` fallback; the button hides when
+  neither is configured.
+- Customers who want a tracked order use **Add to Cart → checkout** — the
+  §2 flow is unchanged and remains the only order-creating path.
 
 ---
 
@@ -1120,36 +1213,27 @@ If using a WhatsApp template, add a **TRACK ORDER** CTA button.
 
 ---
 
-# 37. Track Order Page
+# 37. Track Order Page — REMOVED (v3.1)
 
-Route:
+**Original v3.0 plan** (route `/track-order`, Order ID + phone as the
+credential pair, status ladder, courier block) shipped in Phase 9 and was
+**removed in Phase 17 at the owner's direction** — the page, header link,
+sitemap entry and `getTrackOrderView` lookup are gone; the route 404s.
 
-```text
-/track-order
-```
-
-Input:
-
-```text
-Order ID
-Phone Number
-```
-
-Display:
+Where each capability lives now:
 
 ```text
-Order Received         ✓
-Payment Confirmed      ✓
-Processing             ✓
-Packed                 ✓
-Shipped                ●
-Delivered              ○
-
-Courier: Delhivery
-Tracking ID: 178921791712
-
-[ TRACK WITH COURIER ]
+Status ladder + statuses  → public /order/[orderNumber] page (coarser view)
+Courier + tracking info   → client dashboard order detail (§34)
+Tracking push message     → WhatsApp shipping message (§36), unchanged
+Phone-paired lookup       → withdrawn (no public order-status query remains;
+                            the §37 rate-limit bucket is dormant)
 ```
+
+The order-number + phone credential discipline is preserved on the public
+order page exactly as before: sequential order IDs are guessable, so the
+page intentionally exposes only items, totals and coarse statuses — full
+name, masked phone, city-level address.
 
 ---
 
@@ -1406,7 +1490,10 @@ minimal client JavaScript
 2-column product grid
 swipe product gallery
 pinch zoom
-sticky Add to Cart / Buy Now
+sticky Add to Cart / Buy via WhatsApp   (v3.1: was "Buy Now")
+persistent bottom contact bar — WhatsApp + Call us on every
+  storefront page; on product pages it yields to the sticky
+  purchase bar (which carries its own WhatsApp button)
 large inputs
 bottom-sheet filters
 short checkout
@@ -1486,10 +1573,10 @@ sri-vartali/
 ```bash
 NEXT_PUBLIC_SITE_URL=
 DATABASE_URL=
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-CLOUDINARY_CLOUD_NAME=
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 WHATSAPP_PHONE_NUMBER_ID=
@@ -1497,10 +1584,15 @@ WHATSAPP_BUSINESS_ACCOUNT_ID=
 WHATSAPP_ACCESS_TOKEN=
 WHATSAPP_VERIFY_TOKEN=
 WHATSAPP_APP_SECRET=
+NEXT_PUBLIC_WHATSAPP_STORE_NUMBER=
 SUPER_ADMIN_EMAIL=
 SENTRY_DSN=
 NEXT_PUBLIC_GA_ID=
 ```
+
+**v3.1:** names above now match `.env.example` exactly (the v3.0 sketch
+omitted the `NEXT_PUBLIC_` prefixes the browser-side code requires, and the
+store number that powers every WhatsApp deep link).
 
 Never commit real secrets.
 
@@ -1712,6 +1804,63 @@ Performance
 Backups
 Monitoring
 Production deployment
+```
+
+## Phase 12 — Super Admin + Realtime (2026-10-09, PR #26)
+
+```text
+§9 super admin panel (10 pages: users, roles, integrations,
+  webhooks, logs, audit, system diagnostics)
+§39 client-dashboard realtime (new order toasts, live list)
+```
+
+## Phase 13 — Search/Filters completion (PR #28)
+
+```text
+§40: schema-driven category facets, collection filter,
+  collection-name search
+```
+
+## Phase 14 — §58/§59 acceptance audit (PR #29)
+
+```text
+Order-ID search on the client orders list
+Touch-friendly image reorder in the product wizard
+```
+
+## Phase 15 — Production smoke runbook (PR #30)
+
+```text
+End-to-end smoke runbook; gate was BLOCKED on the missing
+SUPABASE_SERVICE_ROLE_KEY on the (old) Vercel project
+```
+
+## Phase 16 — WhatsApp-First Commerce (2026-10-10, local-only)
+
+Owner-directed pivot: the supplier chat becomes the primary buying path.
+
+```text
+Cart "Buy via WhatsApp" — server-quoted cart prefilled into wa.me
+  (lib/cart/whatsapp.ts, §18 v3.1 note)
+Persistent supplier contact dock — mobile bottom bar (WhatsApp + Call us)
+  + desktop floating buttons + footer contact pills
+  (components/storefront/contact-dock.tsx, lib/store/contact.ts)
+Fresh Supabase project sri-vartali-commerce (Mumbai, owner: Pushpak):
+  all six migrations, sample catalog seed, admin1@svs.local SUPER_ADMIN
+Vercel production deploy verified end-to-end (incl. the Phase 15 gate),
+  then deleted at the owner's request — local-only from here
+```
+
+## Phase 17 — Owner UX Pass (2026-10-11, local-only)
+
+```text
+Header rail active-route highlighting + brand logo (header + footer)
+Track Order removed end to end (§7, §37)
+Buy Now removed end to end; product pages carry Buy via
+  WhatsApp (§19 v3.1), quantity/variant-aware deep link
+Layout widened 1152px → 1440px across storefront/client/admin
+Hydration hardening: suppressHydrationWarning on <html>/<body>
+  for browser-extension attribute injection
 ```
 
 ---
@@ -1960,10 +2109,11 @@ Checkout
 PIN validation
 Order creation
 WhatsApp
+WhatsApp-first handoffs (v3.1: cart + product Buy via WhatsApp)
 UPI QR/payment instructions
 Manual payment verification
 Shipping/tracking
-Track Order
+Track Order               # removed v3.1 — see §37
 Client Dashboard
 Products
 Inventory

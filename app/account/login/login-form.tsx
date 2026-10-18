@@ -16,11 +16,17 @@ const initialPassword: PasswordActionState = {};
 const inputClass =
   "mt-1.5 w-full rounded-md border border-wine-900/20 bg-white px-3 py-2.5 text-base text-wine-950 outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
 
+/**
+ * Standard email + password sign-in (Phase 19): the password form is the
+ * default experience — email and password on one screen, "Sign in" button,
+ * error inline — the pattern established sites use. The one-time
+ * email link remains as a secondary option for accounts without a password.
+ */
 export function LoginForm() {
   const params = useSearchParams();
   const next = params.get("next") ?? "/account";
   const linkError = params.get("error");
-  const [mode, setMode] = useState<"link" | "password">("link");
+  const [mode, setMode] = useState<"password" | "link">("password");
   const [linkState, linkFormAction, linkPending] = useActionState(
     requestMagicLink,
     initialLink,
@@ -30,20 +36,20 @@ export function LoginForm() {
     initialPassword,
   );
 
-  if (mode === "password") {
+  if (mode === "link") {
     return (
       <>
-        <form action={pwFormAction} className="mt-8 flex flex-col gap-4">
+        <form action={linkFormAction} className="mt-8 flex flex-col gap-4">
           <input type="hidden" name="next" value={next} />
           <div>
             <label
-              htmlFor="pw-email"
+              htmlFor="email"
               className="block text-sm font-medium text-wine-900"
             >
               Email
             </label>
             <input
-              id="pw-email"
+              id="email"
               name="email"
               type="email"
               required
@@ -51,43 +57,37 @@ export function LoginForm() {
               className={inputClass}
             />
           </div>
-          <div>
-            <label
-              htmlFor="pw-password"
-              className="block text-sm font-medium text-wine-900"
-            >
-              Password
-            </label>
-            <input
-              id="pw-password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className={inputClass}
-            />
-          </div>
 
-          {pwState.error ? (
+          {linkState.error ? (
             <p role="alert" className="text-sm text-wine-700">
-              {pwState.error}
+              {linkState.error}
+            </p>
+          ) : null}
+          {linkState.notice ? (
+            <p role="status" className="rounded-md bg-gold-50 px-3 py-2 text-sm text-wine-900">
+              {linkState.notice}
+            </p>
+          ) : null}
+          {linkError && !linkState.notice ? (
+            <p role="alert" className="text-sm text-wine-700">
+              That sign-in link is invalid or expired — request a new one below.
             </p>
           ) : null}
 
           <button
             type="submit"
-            disabled={pwPending}
+            disabled={linkPending}
             className="mt-2 inline-flex h-11 items-center justify-center rounded-md bg-wine-800 px-5 text-sm font-medium text-ivory-50 transition-colors hover:bg-wine-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-800 disabled:opacity-60"
           >
-            {pwPending ? "Signing in…" : "Sign in"}
+            {linkPending ? "Sending…" : "Email me a sign-in link"}
           </button>
         </form>
         <button
           type="button"
-          onClick={() => setMode("link")}
+          onClick={() => setMode("password")}
           className="mt-4 self-start text-sm text-wine-700 underline underline-offset-4 hover:text-wine-900"
         >
-          Email me a one-time link instead
+          Sign in with a password instead
         </button>
       </>
     );
@@ -95,17 +95,17 @@ export function LoginForm() {
 
   return (
     <>
-      <form action={linkFormAction} className="mt-8 flex flex-col gap-4">
+      <form action={pwFormAction} className="mt-8 flex flex-col gap-4">
         <input type="hidden" name="next" value={next} />
         <div>
           <label
-            htmlFor="email"
+            htmlFor="pw-email"
             className="block text-sm font-medium text-wine-900"
           >
             Email
           </label>
           <input
-            id="email"
+            id="pw-email"
             name="email"
             type="email"
             required
@@ -113,37 +113,43 @@ export function LoginForm() {
             className={inputClass}
           />
         </div>
+        <div>
+          <label
+            htmlFor="pw-password"
+            className="block text-sm font-medium text-wine-900"
+          >
+            Password
+          </label>
+          <input
+            id="pw-password"
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            className={inputClass}
+          />
+        </div>
 
-        {linkState.error ? (
+        {pwState.error ? (
           <p role="alert" className="text-sm text-wine-700">
-            {linkState.error}
-          </p>
-        ) : null}
-        {linkState.notice ? (
-          <p role="status" className="rounded-md bg-gold-50 px-3 py-2 text-sm text-wine-900">
-            {linkState.notice}
-          </p>
-        ) : null}
-        {linkError && !linkState.notice ? (
-          <p role="alert" className="text-sm text-wine-700">
-            That sign-in link is invalid or expired — request a new one below.
+            {pwState.error}
           </p>
         ) : null}
 
         <button
           type="submit"
-          disabled={linkPending}
+          disabled={pwPending}
           className="mt-2 inline-flex h-11 items-center justify-center rounded-md bg-wine-800 px-5 text-sm font-medium text-ivory-50 transition-colors hover:bg-wine-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-800 disabled:opacity-60"
         >
-          {linkPending ? "Sending…" : "Email me a sign-in link"}
+          {pwPending ? "Signing in…" : "Sign in"}
         </button>
       </form>
       <button
         type="button"
-        onClick={() => setMode("password")}
+        onClick={() => setMode("link")}
         className="mt-4 self-start text-sm text-wine-700 underline underline-offset-4 hover:text-wine-900"
       >
-        Sign in with a password instead
+        No password yet? Email me a one-time link
       </button>
     </>
   );

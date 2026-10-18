@@ -253,6 +253,28 @@ export async function listStorefrontCategories(): Promise<CategoryNode[]> {
   }));
 }
 
+/**
+ * Owner direction (Phase 19): the launch store sells sarees and blouses —
+ * the platform's other fashion categories stay in the catalog (data,
+ * facets, /category pages, future expansion per spec §4/§61) but leave the
+ * storefront navigation until they actually launch.
+ */
+const HIDDEN_NAV_CATEGORY_SLUGS = new Set([
+  "dresses",
+  "kurtis",
+  "lehengas",
+  "dupattas",
+  "accessories",
+]);
+
+/** Top-level categories visible in storefront navigation (header rail +
+ *  footer shop links). */
+export function navVisibleCategories(all: CategoryNode[]): CategoryNode[] {
+  return all.filter(
+    (c) => c.parentId === null && !HIDDEN_NAV_CATEGORY_SLUGS.has(c.slug),
+  );
+}
+
 export interface CollectionInfo extends RawCollectionRow {
   productCount: number;
 }

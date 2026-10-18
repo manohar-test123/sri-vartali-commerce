@@ -10,7 +10,10 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { getCartCount } from "@/lib/cart/queries";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveStoreContact } from "@/lib/store/contact";
-import { listStorefrontCategories } from "@/lib/storefront/queries";
+import {
+  listStorefrontCategories,
+  navVisibleCategories,
+} from "@/lib/storefront/queries";
 
 /**
  * Storefront shell (§7 public routes): header with live category rail,
@@ -115,8 +118,7 @@ export default async function StorefrontLayout({
             <ul className="space-y-1.5 text-wine-900/70">
               <li><Link href="/shop" className="hover:underline">All pieces</Link></li>
               <li><Link href="/new-arrivals" className="hover:underline">New arrivals</Link></li>
-              {categories
-                .filter((c) => c.parentId === null)
+              {navVisibleCategories(categories)
                 .slice(0, 4)
                 .map((c) => (
                   <li key={c.id}>

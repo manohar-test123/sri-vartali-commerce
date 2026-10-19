@@ -77,3 +77,10 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phase 20 splash: hidden pre-paint for returning sessions and
+   reduced-motion users (class set by the storefront layout's script —
+   kept in sync with lib/storefront/splash.ts). */
+.sv-no-splash .splash-overlay {
+  display: none !important;
+}

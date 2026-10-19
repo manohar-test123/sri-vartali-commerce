@@ -22,6 +22,8 @@ export type RateLimitKind =
   | "order_place"
   | "login_ip"
   | "login_email"
+  | "register_ip"
+  | "register_email"
   | "review_submit"
   | "track_order";
 
@@ -36,6 +38,9 @@ export const RATE_LIMITS: Record<
   login_ip: { limit: 10, windowSeconds: 900 },
   // Magic-link mail bomber guard (per recipient address).
   login_email: { limit: 5, windowSeconds: 3600 },
+  // Phase 20 sign-up: account-creation bursts (per network / per address).
+  register_ip: { limit: 10, windowSeconds: 3600 },
+  register_email: { limit: 5, windowSeconds: 3600 },
   review_submit: { limit: 5, windowSeconds: 3600 },
   // Order-id/phone pair is the credential — slow down enumeration.
   track_order: { limit: 30, windowSeconds: 600 },

@@ -7,6 +7,7 @@ import {
   WhatsAppIcon,
 } from "@/components/storefront/contact-dock";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SplashScreen } from "@/components/storefront/splash-screen";
 import { getCartCount } from "@/lib/cart/queries";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveStoreContact } from "@/lib/store/contact";
@@ -23,6 +24,11 @@ import {
  * every page when the supplier number is configured. A deployment without
  * Supabase env vars renders an explicit setup banner instead of errors
  * (README invariant: degrade, never crash).
+ *
+ * Phase 20: the brand splash overlays the first entry of a session. The
+ * script below runs before first paint and hides it for returning sessions
+ * and reduced-motion users (kept in sync with lib/storefront/splash.ts);
+ * the <noscript> keeps a JavaScript-less visit splash-free.
  */
 
 export default async function StorefrontLayout({
@@ -51,6 +57,16 @@ export default async function StorefrontLayout({
 
   return (
     <>
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            "try{if(sessionStorage.getItem('sv-splash-played')!==null||matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.classList.add('sv-no-splash')}}catch(e){}",
+        }}
+      />
+      <noscript>
+        <style>{`.splash-overlay{display:none !important}`}</style>
+      </noscript>
+      <SplashScreen />
       {!supabaseConfigured ? (
         <p
           role="alert"

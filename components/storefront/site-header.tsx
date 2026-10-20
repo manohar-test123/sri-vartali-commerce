@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 
+import { BrandMark } from "@/components/storefront/brand-mark";
 import { HeaderNav } from "@/components/storefront/header-nav";
 import { WishlistBadge } from "@/components/storefront/wishlist-badge";
 import { navVisibleCategories } from "@/lib/storefront/queries";
@@ -54,17 +55,9 @@ export function SiteHeader({
           className="flex items-center gap-2.5"
           aria-label="Sri Vartali — home"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/logo.svg"
-            alt=""
-            width={40}
-            height={40}
-            className="h-9 w-9 rounded-xl sm:h-10 sm:w-10"
-          />
-          <span className="font-serif text-2xl tracking-wide text-wine-900">
-            Sri Vartali
-          </span>
+          {/* Phase 21 official lockup — it carries the wordmark itself, so
+              no separate site-name span beside it. */}
+          <BrandMark className="h-10 w-auto rounded-lg sm:h-11" height={44} />
         </Link>
 
         <form

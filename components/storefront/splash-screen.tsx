@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { BrandMark } from "@/components/storefront/brand-mark";
+
 import {
   SPLASH_DURATION_MS,
   SPLASH_FADE_MS,
@@ -68,18 +70,11 @@ export function SplashScreen() {
       }`}
       style={{ transitionDuration: `${SPLASH_FADE_MS}ms` }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/brand/logo.svg"
-        alt=""
-        width={112}
-        height={112}
-        className="h-28 w-28 rounded-2xl shadow-2xl"
+      <BrandMark
+        className="h-40 w-auto rounded-2xl shadow-2xl sm:h-48"
+        height={160}
       />
-      <p className="mt-6 font-serif text-2xl tracking-wide text-gold-200">
-        Sri Vartali Sarees
-      </p>
-      <p className="mt-2 text-[11px] uppercase tracking-[0.3em] text-ivory-100/50">
+      <p className="mt-5 text-[11px] uppercase tracking-[0.3em] text-ivory-100/50">
         Handpicked weaves
       </p>
     </div>

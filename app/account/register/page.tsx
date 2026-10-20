@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { BrandMark } from "@/components/storefront/brand-mark";
+
 import { RegisterForm } from "./register-form";
 
 export const metadata: Metadata = { title: "Create an account" };
@@ -11,14 +13,7 @@ export default function RegisterPage() {
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-24">
       <div className="flex flex-col items-center text-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/logo.svg"
-          alt=""
-          width={56}
-          height={56}
-          className="h-14 w-14 rounded-xl"
-        />
+        <BrandMark className="h-16 w-auto rounded-xl" height={64} />
         <h1 className="mt-4 font-serif text-3xl text-wine-900">
           Create an account
         </h1>

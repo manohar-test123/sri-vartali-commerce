@@ -6,6 +6,7 @@ import {
   PhoneIcon,
   WhatsAppIcon,
 } from "@/components/storefront/contact-dock";
+import { BrandMark } from "@/components/storefront/brand-mark";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SplashScreen } from "@/components/storefront/splash-screen";
 import { getCartCount } from "@/lib/cart/queries";
@@ -91,17 +92,8 @@ export default async function StorefrontLayout({
       <footer className="border-t border-wine-900/10 bg-ivory-50">
         <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-12 sm:grid-cols-3 sm:px-6">
           <div>
-            <div className="flex items-center gap-2.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/brand/logo.svg"
-                alt=""
-                width={36}
-                height={36}
-                className="h-8 w-8 rounded-lg sm:h-9 sm:w-9"
-              />
-              <p className="font-serif text-xl text-wine-900">Sri Vartali</p>
-            </div>
+            {/* Phase 21 official lockup — carries the wordmark itself. */}
+            <BrandMark className="h-12 w-auto rounded-lg sm:h-14" height={56} />
             <p className="mt-2 max-w-xs text-sm leading-6 text-wine-900/60">
               Handpicked sarees and ethnic wear, curated for celebration.
               Every piece is chosen slowly and photographed honestly.

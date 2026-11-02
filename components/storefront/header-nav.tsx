@@ -3,9 +3,13 @@
 /**
  * Category rail with active-route highlighting. Client-side only for
  * usePathname; the items themselves are server-rendered props, so the rail
- * still works as plain links before/without hydration. The list is centered
- * and wraps on narrow screens — with 8+ categories a single row cannot fit
- * a phone, and nowrap would push the page wide.
+ * still works as plain links before/without hydration.
+ *
+ * Phase 22 placement: one component, two layouts — inside the header's
+ * flex-wrap row it renders inline (centered links on lg+) or as the
+ * wrapped centered rail on its own line below lg. `className` carries the
+ * responsive placement; the list itself is always centered and wraps
+ * rather than overflowing.
  */
 
 import Link from "next/link";
@@ -21,15 +25,19 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function HeaderNav({ items }: { items: HeaderNavItem[] }) {
+export function HeaderNav({
+  items,
+  className = "",
+}: {
+  items: HeaderNavItem[];
+  /** Placement classes from the header row (inline vs full-width rail). */
+  className?: string;
+}) {
   const pathname = usePathname();
 
   return (
-    <nav
-      aria-label="Categories"
-      className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10"
-    >
-      <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 pb-2.5 text-[13px]">
+    <nav aria-label="Categories" className={className}>
+      <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[13px]">
         {items.map((item) => {
           const active = isActive(pathname, item.href);
           return (

@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
+import { HeartIcon } from "@/components/storefront/icons";
 import {
   getWishlistSnapshot,
   subscribeWishlist,
@@ -24,11 +25,10 @@ export function WishlistBadge() {
     <Link
       href="/wishlist"
       aria-label={`Wishlist${count > 0 ? ` (${count} saved)` : ""}`}
-      className="relative rounded-full px-1 py-1 text-wine-900/70 transition-colors hover:text-wine-900"
+      title="Wishlist"
+      className="relative rounded-full p-1 text-wine-900/70 transition-colors hover:text-wine-900"
     >
-      <span aria-hidden className="text-base">
-        ♡
-      </span>
+      <HeartIcon className="h-[22px] w-[22px]" />
       {count > 0 ? (
         <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-wine-900 px-1 text-[10px] font-semibold text-ivory-50">
           {count > 9 ? "9+" : count}

@@ -89,34 +89,30 @@ export default async function StorefrontLayout({
         {children}
       </main>
       <footer className="border-t border-wine-900/10 bg-ivory-50">
-        <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-12 sm:grid-cols-3 sm:px-6">
-          <div>
-            {/* Phase 22: minimal footer — the brand lockup lives in the
-                header; down here only what customers act on: contacting
-                the store and the link columns beside it. */}
-            {contact ? (
-              <div className="flex flex-col gap-2 text-sm">
-                <a
-                  href={contact.whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 font-medium text-white transition hover:brightness-95"
-                >
-                  <WhatsAppIcon className="h-4 w-4" />
-                  Chat on WhatsApp
-                </a>
-                <a
-                  href={contact.phoneUrl}
-                  className="inline-flex w-fit items-center gap-2 rounded-full border border-wine-900/20 px-4 py-2 font-medium text-wine-900 transition hover:border-wine-900/40"
-                >
-                  <PhoneIcon className="h-4 w-4" />
-                  {contact.displayNumber}
-                </a>
-              </div>
-            ) : (
-              <p className="font-serif text-xl text-wine-900">Sri Vartali</p>
-            )}
-          </div>
+        <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-3 sm:px-6">
+          {/* Phase 23: minimal footer — the brand lives in the header; here
+              only what customers act on. The contact column renders solely
+              when a supplier number is configured (no fallback heading). */}
+          {contact ? (
+            <div className="flex flex-col gap-2 text-sm">
+              <a
+                href={contact.whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 font-medium text-white transition hover:brightness-95"
+              >
+                <WhatsAppIcon className="h-4 w-4" />
+                Chat on WhatsApp
+              </a>
+              <a
+                href={contact.phoneUrl}
+                className="inline-flex w-fit items-center gap-2 rounded-full border border-wine-900/20 px-4 py-2 font-medium text-wine-900 transition hover:border-wine-900/40"
+              >
+                <PhoneIcon className="h-4 w-4" />
+                {contact.displayNumber}
+              </a>
+            </div>
+          ) : null}
           <nav aria-label="Shop" className="text-sm">
             <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
               Shop
@@ -143,7 +139,6 @@ export default async function StorefrontLayout({
               <li><Link href="/wishlist" className="hover:underline">Wishlist</Link></li>
               <li><Link href="/cart" className="hover:underline">Cart</Link></li>
               <li><Link href="/search" className="hover:underline">Search</Link></li>
-              <li><Link href="/account/login" className="hover:underline">Staff sign-in</Link></li>
             </ul>
           </nav>
         </div>

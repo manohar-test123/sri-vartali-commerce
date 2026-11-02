@@ -50,6 +50,16 @@ export function mapSignUpError(message: string): string {
   if (message.includes("already registered")) {
     return "An account with this email already exists. Sign in instead, or use the one-time link option.";
   }
+  // Phase 23: the provider rejects non-deliverable domains outright
+  // (e.g. internal .local addresses) — name it instead of a generic failure.
+  if (message.toLowerCase().includes("email_address_invalid")) {
+    return "This email address can't receive account mails (its domain isn't valid for email). Use a different address.";
+  }
+  // Same honest-outage message as sign-in: the request never reached the
+  // provider, so "could not be created" would misread as a permanent failure.
+  if (/fetch failed|failed to fetch|networkerror|econnrefused|timeout/i.test(message)) {
+    return "Sign-up is temporarily unavailable — please try again in a moment.";
+  }
   if (message.toLowerCase().includes("password")) {
     return `Password is too weak — use at least ${MIN_PASSWORD_LENGTH} characters with a letter and a number.`;
   }

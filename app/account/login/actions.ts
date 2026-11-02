@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient as createServerClient } from "@/lib/db/server";
+import { otpAuthErrorMessage, passwordAuthErrorMessage } from "@/lib/account/auth-errors";
 import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
 
 export type LoginActionState = {
@@ -55,7 +56,7 @@ export async function requestMagicLink(
     },
   });
 
-  if (error) return { error: "Sign-in could not be started. Try again." };
+  if (error) return { error: otpAuthErrorMessage(error) };
 
   return {
     notice: `Check ${email} for the sign-in link. New here? The same link creates your account.`,
@@ -92,7 +93,7 @@ export async function passwordSignIn(
 
   const supabase = await createServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "Email or password is incorrect." };
+  if (error) return { error: passwordAuthErrorMessage(error) };
 
   redirect(safeNext);
 }

@@ -6,7 +6,6 @@ import {
   PhoneIcon,
   WhatsAppIcon,
 } from "@/components/storefront/contact-dock";
-import { BrandMark } from "@/components/storefront/brand-mark";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SplashScreen } from "@/components/storefront/splash-screen";
 import { getCartCount } from "@/lib/cart/queries";
@@ -92,14 +91,11 @@ export default async function StorefrontLayout({
       <footer className="border-t border-wine-900/10 bg-ivory-50">
         <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-12 sm:grid-cols-3 sm:px-6">
           <div>
-            {/* Phase 21 official lockup — carries the wordmark itself. */}
-            <BrandMark className="h-12 w-auto rounded-lg sm:h-14" height={56} />
-            <p className="mt-2 max-w-xs text-sm leading-6 text-wine-900/60">
-              Handpicked sarees and ethnic wear, curated for celebration.
-              Every piece is chosen slowly and photographed honestly.
-            </p>
+            {/* Phase 22: minimal footer — the brand lockup lives in the
+                header; down here only what customers act on: contacting
+                the store and the link columns beside it. */}
             {contact ? (
-              <div className="mt-4 flex flex-col gap-2 text-sm">
+              <div className="flex flex-col gap-2 text-sm">
                 <a
                   href={contact.whatsappUrl}
                   target="_blank"
@@ -117,7 +113,9 @@ export default async function StorefrontLayout({
                   {contact.displayNumber}
                 </a>
               </div>
-            ) : null}
+            ) : (
+              <p className="font-serif text-xl text-wine-900">Sri Vartali</p>
+            )}
           </div>
           <nav aria-label="Shop" className="text-sm">
             <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-wine-900/50">

@@ -19,21 +19,16 @@ import { buildCsp } from "@/lib/security/csp";
 
 const CSP_HEADER = "Content-Security-Policy";
 
-function mintNonce(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes));
-}
-
 export default async function proxy(request: NextRequest) {
-  const nonce = mintNonce();
+  // Phase 24: no script nonce — this Next 16/Turbopack stack never stamps
+  // it on script tags (verified on live builds: 0/14 nonced), so a nonce
+  // policy is unenforceable here. buildCsp documents the full reasoning;
+  // the policy below still locks objects, framing, forms and origins.
   const csp = buildCsp({
-    nonce,
     isDev: process.env.NODE_ENV === "development",
   });
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
   requestHeaders.set(CSP_HEADER, csp);
 
   let response = NextResponse.next({ request: { headers: requestHeaders } });

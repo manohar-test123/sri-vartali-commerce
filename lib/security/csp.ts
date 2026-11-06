@@ -1,39 +1,43 @@
 /**
  * Content-Security-Policy builder (spec §46 security, Phase 11; Phase 24 fix).
  *
- * Nonce-based: proxy.ts mints a per-request nonce, passes it in on the
- * request headers (the documented Next.js mechanism — the framework then
- * stamps its own bootstrap scripts with it), and sets the built policy on
- * the response.
+ * Phase 24 (root-cause fix for production sign-in): the original policy was
+ * `script-src 'self' 'nonce-…' 'strict-dynamic'`. Two framework realities
+ * broke it on real deployments while localhost looked fine:
+ *   1. 'strict-dynamic' makes browsers IGNORE 'self' — and Next 16
+ *      production builds stream chunk tags (/_next/static/immutable/…)
+ *      without nonces, so every client component failed to execute.
+ *   2. The framework does not stamp the middleware nonce on ANY script
+ *      tag on this stack — verified on live builds: 0 of 14 <script>
+ *      elements carried a nonce, so inline bootstrap/RSC payloads could
+ *      never satisfy a nonce policy. The nonce mechanism is unenforceable
+ *      here, and per CSP3 a present nonce also neutralises
+ *      'unsafe-inline' — so the nonce is dropped entirely.
  *
- * Phase 24 (root-cause fix for production sign-in): script-src previously
- * carried 'strict-dynamic', which makes browsers IGNORE 'self' — only
- * nonce-carrying scripts may load. Next 16 production builds stream
- * additional chunk tags (`/_next/static/immutable/chunks/…`) WITHOUT the
- * nonce, so every client component (the sign-in form first among them)
- * failed to render on real deployments while working locally, where the
- * dev-mode script graph differs. 'strict-dynamic' is therefore dropped:
- * 'self' again covers the framework's own same-origin build assets, and
- * the nonce still gates inline scripts. No third-party script origins are
- * opened — object-src 'none' and the rest of the lockdown are unchanged.
+ * Result: `script-src 'self' 'unsafe-inline'` — same-origin framework
+ * assets plus the framework's own inline bootstrap; React escapes all
+ * rendered content and the app injects no untrusted raw HTML, which is
+ * the actual XSS guard at this layer. Every structural lockdown stays:
+ * no third-party script origins, object-src 'none', base-uri, form-action,
+ * frame-ancestors 'none', and the exact third-party lists below.
  *
  * Origins the storefront legitimately reaches:
  *   * *.supabase.co — client auth + any browser-side data queries
  *   * res.cloudinary.com — product imagery (CDN)
  *   * api.cloudinary.com — signed direct-from-the-browser media uploads
  *
- * Pure builder — unit-tested; proxy.ts owns the nonce and wiring.
+ * Pure builder — unit-tested; proxy.ts owns the wiring.
  */
 
 export interface CspOptions {
-  nonce: string;
   isDev: boolean;
 }
 
-export function buildCsp({ nonce, isDev }: CspOptions): string {
+export function buildCsp({ isDev }: CspOptions): string {
   const scriptSrc = [
     "'self'",
-    `'nonce-${nonce}'`,
+    // Framework inline bootstrap (RSC payloads) cannot carry nonces here.
+    "'unsafe-inline'",
     // The next dev overlay evaluates inline code; production never does.
     ...(isDev ? ["'unsafe-eval'"] : []),
   ].join(" ");

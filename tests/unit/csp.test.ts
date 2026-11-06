@@ -3,25 +3,34 @@ import { describe, expect, it } from "vitest";
 import { buildCsp } from "@/lib/security/csp";
 
 /**
- * Pins the Content-Security-Policy shape: nonce-gated inline scripts with
- * 'self' retained for Next 16's nonce-less production chunk tags (Phase 24
- * fix), the storefront's legitimate third-party origins, and the dev-only
- * relaxations. If a directive changes, this file is the reason check.
+ * Pins the Content-Security-Policy shape after the Phase 24 root-cause fix:
+ * scripts are 'self' + 'unsafe-inline' because this Next 16/Turbopack stack
+ * never stamps middleware nonces on script tags (verified on live builds:
+ * 0/14 nonced — a nonce policy is unenforceable here, and a present nonce
+ * would also neutralise 'unsafe-inline'). Everything structural stays
+ * locked: no third-party script origins, objects, framing, base, forms,
+ * plus the exact storefront third-party lists. If a directive changes,
+ * this file is the reason check.
  */
-const NONCE = "dGVzdC1ub25jZS0xNg==";
-
 describe("buildCsp", () => {
-  it("nonces inline scripts and keeps 'self' for framework chunks", () => {
-    const csp = buildCsp({ nonce: NONCE, isDev: false });
-    expect(csp).toContain(`script-src 'self' 'nonce-${NONCE}'`);
-    // Phase 24: 'strict-dynamic' made browsers ignore 'self', blocking
-    // the framework's nonce-less production chunk tags — the root cause
-    // of the sign-in form never rendering on real deployments.
+  it("allows the framework's own scripts — same-origin chunks + inline bootstrap", () => {
+    const csp = buildCsp({ isDev: false });
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    // Phase 24: both halves of the old policy were unenforceable —
+    // 'strict-dynamic' made browsers ignore 'self' (chunk tags carry no
+    // nonce), and no script tag ever received the nonce at all.
     expect(csp).not.toContain("'strict-dynamic'");
+    expect(csp).not.toContain("'nonce-");
+  });
+
+  it("opens no third-party script origins", () => {
+    const csp = buildCsp({ isDev: false });
+    const scriptSrc = csp.match(/script-src ([^;]+)/)?.[1] ?? "";
+    expect(scriptSrc).not.toMatch(/https?:/);
   });
 
   it("allows exactly the storefront's third parties", () => {
-    const csp = buildCsp({ nonce: NONCE, isDev: false });
+    const csp = buildCsp({ isDev: false });
     expect(csp).toContain("img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co");
     expect(csp).toContain(
       "connect-src 'self' https://*.supabase.co https://api.cloudinary.com",
@@ -29,7 +38,7 @@ describe("buildCsp", () => {
   });
 
   it("locks framing, objects, base and forms", () => {
-    const csp = buildCsp({ nonce: NONCE, isDev: false });
+    const csp = buildCsp({ isDev: false });
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain("form-action 'self'");
@@ -37,8 +46,8 @@ describe("buildCsp", () => {
   });
 
   it("adds unsafe-eval and the HMR socket only for dev", () => {
-    const dev = buildCsp({ nonce: NONCE, isDev: true });
-    const prod = buildCsp({ nonce: NONCE, isDev: false });
+    const dev = buildCsp({ isDev: true });
+    const prod = buildCsp({ isDev: false });
     expect(dev).toContain("'unsafe-eval'");
     expect(prod).not.toContain("'unsafe-eval'");
     expect(dev).toContain(" ws:");
@@ -46,17 +55,11 @@ describe("buildCsp", () => {
   });
 
   it("upgrades insecure requests in production only", () => {
-    expect(buildCsp({ nonce: NONCE, isDev: false })).toContain(
+    expect(buildCsp({ isDev: false })).toContain(
       "upgrade-insecure-requests",
     );
-    expect(buildCsp({ nonce: NONCE, isDev: true })).not.toContain(
+    expect(buildCsp({ isDev: true })).not.toContain(
       "upgrade-insecure-requests",
     );
-  });
-
-  it("varies with the nonce (per-request policy, not a constant)", () => {
-    const a = buildCsp({ nonce: "AAAA", isDev: false });
-    const b = buildCsp({ nonce: "BBBB", isDev: false });
-    expect(a).not.toBe(b);
   });
 });

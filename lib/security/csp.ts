@@ -1,11 +1,21 @@
 /**
- * Content-Security-Policy builder (spec §46 security, Phase 11).
+ * Content-Security-Policy builder (spec §46 security, Phase 11; Phase 24 fix).
  *
  * Nonce-based: proxy.ts mints a per-request nonce, passes it in on the
  * request headers (the documented Next.js mechanism — the framework then
  * stamps its own bootstrap scripts with it), and sets the built policy on
- * the response. 'strict-dynamic' means the nonce also covers anything Next
- * loads later; a hardcoded allowlist of script URLs is never needed.
+ * the response.
+ *
+ * Phase 24 (root-cause fix for production sign-in): script-src previously
+ * carried 'strict-dynamic', which makes browsers IGNORE 'self' — only
+ * nonce-carrying scripts may load. Next 16 production builds stream
+ * additional chunk tags (`/_next/static/immutable/chunks/…`) WITHOUT the
+ * nonce, so every client component (the sign-in form first among them)
+ * failed to render on real deployments while working locally, where the
+ * dev-mode script graph differs. 'strict-dynamic' is therefore dropped:
+ * 'self' again covers the framework's own same-origin build assets, and
+ * the nonce still gates inline scripts. No third-party script origins are
+ * opened — object-src 'none' and the rest of the lockdown are unchanged.
  *
  * Origins the storefront legitimately reaches:
  *   * *.supabase.co — client auth + any browser-side data queries
@@ -24,7 +34,6 @@ export function buildCsp({ nonce, isDev }: CspOptions): string {
   const scriptSrc = [
     "'self'",
     `'nonce-${nonce}'`,
-    "'strict-dynamic'",
     // The next dev overlay evaluates inline code; production never does.
     ...(isDev ? ["'unsafe-eval'"] : []),
   ].join(" ");

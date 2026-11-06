@@ -3,17 +3,21 @@ import { describe, expect, it } from "vitest";
 import { buildCsp } from "@/lib/security/csp";
 
 /**
- * Pins the Phase 11 Content-Security-Policy shape: nonce + strict-dynamic
- * on scripts, the storefront's legitimate third-party origins, and the
- * dev-only relaxations. If a directive changes, this file is the reason
- * check.
+ * Pins the Content-Security-Policy shape: nonce-gated inline scripts with
+ * 'self' retained for Next 16's nonce-less production chunk tags (Phase 24
+ * fix), the storefront's legitimate third-party origins, and the dev-only
+ * relaxations. If a directive changes, this file is the reason check.
  */
 const NONCE = "dGVzdC1ub25jZS0xNg==";
 
 describe("buildCsp", () => {
-  it("nonces scripts and opts into strict-dynamic", () => {
+  it("nonces inline scripts and keeps 'self' for framework chunks", () => {
     const csp = buildCsp({ nonce: NONCE, isDev: false });
-    expect(csp).toContain(`script-src 'self' 'nonce-${NONCE}' 'strict-dynamic'`);
+    expect(csp).toContain(`script-src 'self' 'nonce-${NONCE}'`);
+    // Phase 24: 'strict-dynamic' made browsers ignore 'self', blocking
+    // the framework's nonce-less production chunk tags — the root cause
+    // of the sign-in form never rendering on real deployments.
+    expect(csp).not.toContain("'strict-dynamic'");
   });
 
   it("allows exactly the storefront's third parties", () => {

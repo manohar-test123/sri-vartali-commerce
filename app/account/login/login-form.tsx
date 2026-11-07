@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useActionState, useState } from "react";
 
@@ -143,6 +144,13 @@ export function LoginForm() {
         >
           {pwPending ? "Signing in…" : "Sign in"}
         </button>
+        {/* Directly below the password field's submit row (Phase 27). */}
+        <Link
+          href="/account/forgot-password"
+          className="mt-1 self-start text-sm text-wine-700 underline underline-offset-4 hover:text-wine-900"
+        >
+          Forgot password?
+        </Link>
       </form>
       <button
         type="button"

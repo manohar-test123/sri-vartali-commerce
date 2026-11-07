@@ -73,8 +73,10 @@ export function SiteHeader({
             <SearchIcon className="h-[22px] w-[22px]" />
           </Link>
           <WishlistBadge />
+          {/* Phase 27: straight to sign-in (signed-in users bounce to
+              /account from there) — one destination, both states. */}
           <Link
-            href="/account"
+            href="/account/login"
             aria-label="Account"
             title="Account"
             className="rounded-full p-1 transition-colors hover:text-wine-900"

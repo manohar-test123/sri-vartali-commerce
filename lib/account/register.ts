@@ -16,6 +16,17 @@ export type RegistrationFieldErrors = Record<string, string>;
 export const MIN_PASSWORD_LENGTH = 8;
 const MAX_NAME_LENGTH = 60;
 
+/** The one password policy everywhere (registration + reset). Pure. */
+export function validatePasswordStrength(password: string): string | null {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  if (!/[a-z]/i.test(password) || !/\d/.test(password)) {
+    return "Password needs at least one letter and one number.";
+  }
+  return null;
+}
+
 export function validateRegistration(
   input: RegistrationInput,
 ): RegistrationFieldErrors {
@@ -32,11 +43,8 @@ export function validateRegistration(
     errors.email = "Enter a valid email address.";
   }
 
-  if (input.password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-  } else if (!/[a-z]/i.test(input.password) || !/\d/.test(input.password)) {
-    errors.password = "Password needs at least one letter and one number.";
-  }
+  const passwordError = validatePasswordStrength(input.password);
+  if (passwordError) errors.password = passwordError;
 
   if (input.confirmPassword !== input.password) {
     errors.confirmPassword = "Passwords do not match.";

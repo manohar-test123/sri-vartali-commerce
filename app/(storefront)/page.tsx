@@ -161,17 +161,17 @@ export default async function HomePage() {
       {/* Brand story — owner's own words; founder portrait left (Phase 26) */}
       <section className="border-y border-wine-900/10 bg-wine-900 text-ivory-100">
         <div className="mx-auto grid w-full max-w-[1440px] items-center gap-10 px-4 py-16 sm:grid-cols-2 sm:px-6 lg:gap-14">
-          {/* Founder portrait — square crop via aspect-ratio + object-cover,
-              so any photograph placed at /brand/founder.jpg renders cleanly
-              (swap the src + alt when the owner's photograph lands). */}
+          {/* Founder portrait — owner's photograph (1086×1448), square-cropped
+              via aspect-square + object-cover. The face sits in the top third
+              of the frame, so the crop anchors at center 25% for headroom. */}
           <figure className="mx-auto w-full max-w-sm">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/brand/founder-placeholder.svg"
-              alt="Portrait of the founder of Sri Vartali"
+              src="/brand/founder.jpg"
+              alt="The founder of Sri Vartali Sarees, draped in a cream silk saree"
               width={480}
               height={480}
-              className="aspect-square w-full rounded-2xl border border-gold-300/40 object-cover shadow-2xl shadow-black/30"
+              className="aspect-square w-full rounded-2xl border border-gold-300/40 object-cover object-[50%_25%] shadow-2xl shadow-black/30"
             />
             <figcaption className="mt-3 text-center text-[11px] uppercase tracking-[0.18em] text-gold-300/80">
               The founder

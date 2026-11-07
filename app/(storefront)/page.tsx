@@ -3,15 +3,12 @@ import Link from "next/link";
 
 import { ProductCard, cardDataFromSummary } from "@/components/storefront/product-card";
 import { formatPaise } from "@/lib/catalog/money";
-import {
-  listPublishedProducts,
-  listStorefrontCollections,
-} from "@/lib/storefront/queries";
+import { listPublishedProducts } from "@/lib/storefront/queries";
 import { distinctAttributeValues } from "@/lib/storefront/search";
 
 /**
  * Homepage (§11). Sections render only when live data backs them:
- * collections, new arrivals, fabric/occasion rails and a featured edit come
+ * new arrivals and fabric/occasion rails come
  * from the catalog; Best Sellers wait for order history (Phase 6+) and
  * reviews/WhatsApp/newsletter wait for their data sources — an honest home
  * page beats placeholder theatre.
@@ -61,14 +58,11 @@ function SectionHeading({
 }
 
 export default async function HomePage() {
-  const [products, collections] = await Promise.all([
-    listPublishedProducts(),
-    listStorefrontCollections(),
-  ]);
+  // Phase 27: collection ("edits") sections removed per owner direction —
+  // only the product-backed rails remain on the homepage.
+  const products = await listPublishedProducts();
 
   const newArrivals = products.slice(0, 8);
-  const featured =
-    collections.find((c) => c.productCount > 0) ?? null;
   const fabrics = distinctAttributeValues(products, ["fabric", "material"]).slice(0, 8);
   const occasions = distinctAttributeValues(products, ["occasion"]).slice(0, 6);
 
@@ -103,31 +97,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Shop by Collection (§41) */}
-      {collections.length > 0 ? (
-        <section className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6">
-          <SectionHeading
-            kicker="Curated edits"
-            title="Shop by collection"
-          />
-          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {collections.slice(0, 4).map((c) => (
-              <li key={c.id}>
-                <Link
-                  href={`/collections/${c.slug}`}
-                  className="flex h-28 flex-col items-center justify-center rounded-2xl border border-gold-200 bg-white/70 px-4 text-center transition-colors hover:border-gold-400 hover:bg-white"
-                >
-                  <span className="font-serif text-lg text-wine-900">{c.name}</span>
-                  <span className="mt-1 text-xs text-wine-900/50">
-                    {c.productCount} {c.productCount === 1 ? "piece" : "pieces"}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {/* New Arrivals */}
       {newArrivals.length > 0 ? (
@@ -168,13 +137,13 @@ export default async function HomePage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand/founder.jpg"
-              alt="The founder of Sri Vartali Sarees, draped in a cream silk saree"
+              alt="Jahnavi Battula, founder of Sri Vartali Sarees, draped in a cream silk saree"
               width={480}
               height={480}
               className="aspect-square w-full rounded-2xl border border-gold-300/40 object-cover object-[50%_25%] shadow-2xl shadow-black/30"
             />
             <figcaption className="mt-3 text-center text-[11px] uppercase tracking-[0.18em] text-gold-300/80">
-              The founder
+              Jahnavi Battula · Founder
             </figcaption>
           </figure>
           <div>
@@ -182,6 +151,9 @@ export default async function HomePage() {
               Our story
             </p>
             <h2 className="mt-2 font-serif text-3xl">One saree at a time</h2>
+            <p className="mt-2 font-serif text-xl text-gold-200">
+              Jahnavi Battula
+            </p>
             <div className="mt-5 space-y-4 text-sm leading-7 text-ivory-100/80">
               <p>
                 Sri Vartali was born out of my love for sarees and the happiness
@@ -201,6 +173,9 @@ export default async function HomePage() {
                 bringing to life, one saree at a time.
               </p>
             </div>
+            <p className="mt-6 font-serif text-lg italic text-gold-300">
+              — Jahnavi Battula, Founder
+            </p>
           </div>
         </div>
       </section>
@@ -240,33 +215,6 @@ export default async function HomePage() {
               </li>
             ))}
           </ul>
-        </section>
-      ) : null}
-
-      {/* Featured Collection */}
-      {featured ? (
-        <section className="border-t border-wine-900/10 bg-ivory-50">
-          <div className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6">
-            <SectionHeading
-              kicker="Featured edit"
-              title={featured.name}
-              href={`/collections/${featured.slug}`}
-              linkLabel="View the edit"
-            />
-            {featured.description ? (
-              <p className="mb-6 max-w-2xl text-sm leading-7 text-wine-900/70">
-                {featured.description}
-              </p>
-            ) : null}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
-              {products
-                .filter((p) => p.collectionSlugs.includes(featured.slug))
-                .slice(0, 4)
-                .map((p) => (
-                  <ProductCard key={p.id} product={cardDataFromSummary(p)} />
-                ))}
-            </div>
-          </div>
         </section>
       ) : null}
 

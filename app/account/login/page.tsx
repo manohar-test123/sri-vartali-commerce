@@ -1,13 +1,24 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { BrandMark } from "@/components/storefront/brand-mark";
+import { getSession } from "@/lib/auth/session";
 
 import { LoginForm } from "./login-form";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Sign in" };
 
-export default function LoginPage() {
+/**
+ * Phase 27: the header's Account action points here directly, so signed-in
+ * visitors bounce straight to their account instead of seeing a login form.
+ */
+export default async function LoginPage() {
+  const session = await getSession();
+  if (session.status === "authenticated") redirect("/account");
+
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-24">
       <div className="flex flex-col items-center text-center">

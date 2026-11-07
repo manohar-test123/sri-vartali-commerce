@@ -39,11 +39,6 @@ export default async function LoginPage() {
       <Suspense>
         <LoginForm />
       </Suspense>
-
-      <p className="mt-6 text-xs leading-5 text-wine-900/60">
-        Staff accounts (client dashboard, super admin) use the same sign-in —
-        access depends on the role granted to your account.
-      </p>
     </div>
   );
 }

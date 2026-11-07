@@ -80,11 +80,13 @@ export async function createAccount(
 
   if (error) return { error: mapSignUpError(error.message) };
 
-  // Projects with email confirmation on return no session here — the
-  // welcome/confirmation mail carries the link that establishes it.
+  // Phase 29: email confirmation is off (mailer_autoconfirm) — signUp
+  // establishes the session immediately and the user lands signed in.
+  // The email-notice branch remains only as a fallback for projects
+  // that re-enable confirmation.
   if (data.session) redirect("/account");
 
   return {
-    notice: `Account created. Check ${input.email} for the confirmation link to sign in for the first time.`,
+    notice: `Account created. Sign in with your email and password.`,
   };
 }

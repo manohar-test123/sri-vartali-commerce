@@ -56,7 +56,7 @@ export function validateRegistration(
 /** Friendly mapping of Supabase auth error messages for sign-up. */
 export function mapSignUpError(message: string): string {
   if (message.includes("already registered")) {
-    return "An account with this email already exists. Sign in instead, or use the one-time link option.";
+    return "An account with this email already exists. Sign in instead, or reset your password from the sign-in page.";
   }
   // Phase 23: the provider rejects non-deliverable domains outright
   // (e.g. internal .local addresses) — name it instead of a generic failure.

@@ -32,8 +32,8 @@ export default async function LoginPage() {
           className="text-wine-900 underline underline-offset-2"
         >
           Create an account
-        </Link>{" "}
-        — or request a one-time sign-in link below.
+        </Link>
+        .
       </p>
 
       <Suspense>

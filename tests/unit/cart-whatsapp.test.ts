@@ -46,7 +46,7 @@ function quoteFixture(overrides?: Partial<Quote>): Quote {
 }
 
 describe("buildCartWhatsAppMessage", () => {
-  it("renders every line with id, variant, qty and price", () => {
+  it("renders every line with id, variant, qty, unit price and line price", () => {
     const message = buildCartWhatsAppMessage(quoteFixture());
 
     expect(message).toContain("Hello Sri Vartali Sarees 👋");
@@ -54,9 +54,12 @@ describe("buildCartWhatsAppMessage", () => {
     expect(message).toContain("Product ID: SVS-P-00121");
     expect(message).toContain("Variant: Wine · M");
     expect(message).toContain("Qty: 1");
+    expect(message).toContain("Unit price: ₹5,999");
     expect(message).toContain("Price: ₹5,999");
     expect(message).toContain("2. Cotton Daily Saree");
     expect(message).toContain("Qty: 2");
+    // Phase 28: individual (per-item) price must ride along even at qty ≥ 2.
+    expect(message).toContain("Unit price: ₹1,799");
     expect(message).toContain("Price: ₹3,598");
   });
 
@@ -100,6 +103,8 @@ describe("buildCartWhatsAppMessage", () => {
     const message = buildCartWhatsAppMessage(quoteFixture());
     // Encoding target for the wa.me deep link is tested in order-whatsapp;
     // here we only pin the money surfaces the message exposes.
-    expect(message.match(/₹/g)?.length).toBe(5);
+    // 5×₹ default fixture: 2 unit prices + 2 line prices + subtotal —
+    // discount and total render ₹ too in this fixture (7 total).
+    expect(message.match(/₹/g)?.length).toBe(7);
   });
 });

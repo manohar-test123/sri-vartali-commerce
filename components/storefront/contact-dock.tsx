@@ -70,14 +70,14 @@ export function ContactDock({
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-[#25D366] py-3 text-sm font-semibold text-white transition active:brightness-95"
+            className="flex items-center justify-center gap-2 bg-[#25D366] py-4 text-sm font-semibold text-white transition active:brightness-95"
           >
             <WhatsAppIcon className="h-5 w-5" />
             WhatsApp
           </a>
           <a
             href={phoneUrl}
-            className="flex items-center justify-center gap-2 bg-wine-900 py-3 text-sm font-semibold text-ivory-50 transition active:bg-wine-800"
+            className="flex items-center justify-center gap-2 bg-wine-900 py-4 text-sm font-semibold text-ivory-50 transition active:bg-wine-800"
           >
             <PhoneIcon className="h-5 w-5" />
             Call us
@@ -109,7 +109,7 @@ export function ContactDock({
 
       {/* Clearance so the fixed mobile bar never covers footer content;
           rendered only alongside it (skipped on product pages). */}
-      {productPage ? null : <div aria-hidden className="h-12 sm:hidden" />}
+      {productPage ? null : <div aria-hidden className="h-14 sm:hidden" />}
     </>
   );
 }

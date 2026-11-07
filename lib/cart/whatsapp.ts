@@ -58,6 +58,9 @@ export function buildCartWhatsAppMessage(quote: Quote): string {
     lines.push(`Product ID: ${line.productCode}`);
     if (line.variantName) lines.push(`Variant: ${line.variantName}`);
     lines.push(`Qty: ${line.quantity}`);
+    // Phase 28: the per-item price rides along explicitly — at qty ≥ 2 a
+    // lone line total hides the individual price the supplier needs.
+    lines.push(`Unit price: ${formatPaise(line.unitPricePaise)}`);
     lines.push(`Price: ${formatPaise(line.lineTotalPaise)}`);
     lines.push("");
   });

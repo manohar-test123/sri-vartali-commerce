@@ -1,72 +1,21 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { passwordAuthErrorMessage } from "@/lib/account/auth-errors";
 import { createClient as createServerClient } from "@/lib/db/server";
-import { otpAuthErrorMessage, passwordAuthErrorMessage } from "@/lib/account/auth-errors";
 import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
-
-export type LoginActionState = {
-  error?: string;
-  notice?: string;
-};
 
 export type PasswordActionState = {
   error?: string;
 };
 
 /**
- * Magic-link sign-in (spec §7 /account/login). Sends a one-time link to the
- * email; the verify route exchanges it for a session. No passwords to store.
- */
-export async function requestMagicLink(
-  _prev: LoginActionState,
-  formData: FormData,
-): Promise<LoginActionState> {
-  const email = String(formData.get("email") ?? "").trim();
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return { error: "Enter a valid email address." };
-  }
-
-  // §46 rate limits: one bucket per network (brute force) and one per
-  // recipient address (magic-link mail bombing).
-  const [ipLimit, emailLimit] = await Promise.all([
-    checkRateLimit("login_ip"),
-    checkRateLimit("login_email", email),
-  ]);
-  const limited = !ipLimit.allowed ? ipLimit : !emailLimit.allowed ? emailLimit : null;
-  if (limited) {
-    return {
-      error: `Too many sign-in attempts. Please try again ${formatRetryAfter(
-        limited.retryAfterSeconds,
-      )}.`,
-    };
-  }
-
-  const origin = (await headers()).get("origin");
-  const next = String(formData.get("next") ?? "/account");
-
-  const supabase = await createServerClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: `${origin}/account/login/verify?next=${encodeURIComponent(next)}`,
-    },
-  });
-
-  if (error) return { error: otpAuthErrorMessage(error) };
-
-  return {
-    notice: `Check ${email} for the sign-in link. New here? The same link creates your account.`,
-  };
-}
-
-/**
- * Password sign-in for accounts created directly in the Supabase dashboard
- * (staff whose inbox cannot take magic links). Establishes the same session
- * as the magic-link flow.
+ * Password sign-in (§7 /account/login). Phase 28: the magic-link
+ * (email one-time sign-in) flow was removed per owner direction — this
+ * action is the single sign-in path. Password recovery keeps its own
+ * email flow under /account/forgot-password; the verify route remains
+ * for signup-confirmation and recovery links.
  */
 export async function passwordSignIn(
   _prev: PasswordActionState,

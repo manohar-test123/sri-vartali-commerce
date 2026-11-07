@@ -14,9 +14,10 @@ import { moveItem } from "@/lib/catalog/media-order";
 
 /**
  * Product photos (§15B): multi-upload with progress, drag-to-reorder,
- * primary selection, alt text, delete, retry. Uploads go browser →
- * Cloudinary with a server-signed payload (rule 13 analog); when
- * Cloudinary isn't configured, images can be added by URL.
+ * primary selection, alt text, delete, retry. Phase 30: uploads go
+ * browser → our API route → Supabase Storage `product-media` bucket
+ * (service-role, client-role gated — same auth as every dashboard
+ * action); images can also be added by URL.
  *
  * The card grid is derived straight from the `media` prop (server truth):
  * every mutation persists then router.refresh()es, so images appear
@@ -70,55 +71,26 @@ export function MediaManager({
     void persistOrder(next, primaryId ?? next[0]?.id ?? null);
   }
 
-  async function sign() {
-    const response = await fetch("/api/client/media/signature", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productCode }),
-    });
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "Could not sign upload.");
-    }
-    return (await response.json()) as {
-      configured: boolean;
-      cloudName?: string;
-      apiKey?: string;
-      folder?: string;
-      timestamp?: string;
-      signature?: string;
-    };
-  }
-
   function patchUpload(id: number, patch: Partial<Upload>) {
     setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
   }
 
-  // §15B: a failed upload stays on screen with a Retry — it never just
-  // vanishes. Success removes the card once the row is persisted.
+  // §15B (Phase 30: Supabase Storage): a failed upload stays on screen with
+  // a Retry — it never just vanishes. Success removes the card once the row
+  // is persisted. The file goes to our own API route which stores it in the
+  // Supabase Storage `product-media` bucket (service-role, client-role
+  // gated) and returns the CDN URL.
   async function uploadOne(entry: Upload): Promise<void> {
     patchUpload(entry.id, { error: undefined, progress: 0 });
     try {
-      const signature = await sign();
-      if (!signature.configured) {
-        throw new Error(
-          "Cloudinary isn't configured yet (Settings → Integrations) — use “Add by URL” below.",
-        );
-      }
       const form = new FormData();
       form.append("file", entry.file);
-      form.append("api_key", signature.apiKey!);
-      form.append("timestamp", signature.timestamp!);
-      form.append("folder", signature.folder!);
-      form.append("signature", signature.signature!);
+      form.append("productCode", productCode);
 
-      const body = await new Promise<{ secure_url: string; public_id: string }>(
+      const body = await new Promise<{ url: string; path?: string; error?: string }>(
         (resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open(
-            "POST",
-            `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-          );
+          xhr.open("POST", "/api/client/media/upload");
           xhr.upload.onprogress = (event) => {
             if (!event.lengthComputable) return;
             patchUpload(entry.id, {
@@ -126,9 +98,14 @@ export function MediaManager({
             });
           };
           xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve(JSON.parse(xhr.responseText));
-            } else {
+            try {
+              const parsed = JSON.parse(xhr.responseText);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(parsed);
+              } else {
+                reject(new Error(parsed.error ?? `HTTP ${xhr.status}`));
+              }
+            } catch {
               reject(new Error(`HTTP ${xhr.status}`));
             }
           };
@@ -137,10 +114,7 @@ export function MediaManager({
         },
       );
 
-      const result = await addMedia(productId, {
-        url: body.secure_url,
-        cloudinaryPublicId: body.public_id,
-      });
+      const result = await addMedia(productId, { url: body.url });
       if (!result.ok) {
         patchUpload(entry.id, { error: result.error });
         return;

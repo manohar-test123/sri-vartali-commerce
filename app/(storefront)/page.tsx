@@ -158,24 +158,32 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Brand story */}
+      {/* Brand story — owner's own words (Phase 26 content update) */}
       <section className="border-y border-wine-900/10 bg-wine-900 text-ivory-100">
         <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-16 sm:grid-cols-2 sm:px-6">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-gold-300">
               Our story
             </p>
-            <h2 className="mt-2 font-serif text-3xl">Chosen slowly, worn proudly</h2>
+            <h2 className="mt-2 font-serif text-3xl">One saree at a time</h2>
           </div>
           <div className="space-y-4 text-sm leading-7 text-ivory-100/80">
             <p>
-              Sri Vartali began with a simple frustration: too many beautiful
-              weaves sold with too little honesty. We list every piece with its
-              fabric, origin and measurements — the good and the plain.
+              Sri Vartali was born out of my love for sarees and the happiness
+              I find in wearing them every single day. What started as a
+              personal passion slowly grew into a dream of creating something
+              of my own.
             </p>
             <p>
-              From Kanchipuram looms to light cottons for everyday wear, what
-              you see photographed is what arrives at your door.
+              I always wished to bring together sarees that reflect my taste,
+              my choices, and the beauty I see in every weave. My biggest
+              dream is to have people fall in love with the collections I
+              handpick, just as much as I do.
+            </p>
+            <p>
+              Sri Vartali is more than just a saree business; it&rsquo;s my
+              little world, a piece of my heart, and a dream I&rsquo;m
+              bringing to life, one saree at a time.
             </p>
           </div>
         </div>

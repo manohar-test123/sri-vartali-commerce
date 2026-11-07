@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ProductCard, cardDataFromSummary } from "@/components/storefront/product-card";
 import { formatPaise } from "@/lib/catalog/money";
 import { listPublishedProducts } from "@/lib/storefront/queries";
-import { distinctAttributeValues } from "@/lib/storefront/search";
 
 /**
  * Homepage (§11). Sections render only when live data backs them:
@@ -63,8 +62,6 @@ export default async function HomePage() {
   const products = await listPublishedProducts();
 
   const newArrivals = products.slice(0, 8);
-  const fabrics = distinctAttributeValues(products, ["fabric", "material"]).slice(0, 8);
-  const occasions = distinctAttributeValues(products, ["occasion"]).slice(0, 6);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -180,43 +177,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Shop by Fabric */}
-      {fabrics.length > 0 ? (
-        <section className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6">
-          <SectionHeading kicker="By material" title="Shop by fabric" />
-          <ul className="flex flex-wrap gap-3">
-            {fabrics.map((f) => (
-              <li key={f}>
-                <Link
-                  href={`/shop?fabric=${encodeURIComponent(f)}`}
-                  className="inline-block rounded-full border border-wine-900/15 bg-white/70 px-5 py-2 text-sm text-wine-900/80 transition-colors hover:border-gold-400 hover:text-wine-900"
-                >
-                  {f}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {/* Shop by Occasion */}
-      {occasions.length > 0 ? (
-        <section className="mx-auto w-full max-w-[1440px] px-4 pb-14 sm:px-6">
-          <SectionHeading kicker="Dress for it" title="Shop by occasion" />
-          <ul className="flex flex-wrap gap-3">
-            {occasions.map((o) => (
-              <li key={o}>
-                <Link
-                  href={`/shop?occasion=${encodeURIComponent(o)}`}
-                  className="inline-block rounded-full border border-wine-900/15 bg-white/70 px-5 py-2 text-sm text-wine-900/80 transition-colors hover:border-gold-400 hover:text-wine-900"
-                >
-                  {o}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {/* Phase 30: Shop-by-fabric and Shop-by-occasion pill sections removed
+          per owner direction — the /shop page's sidebar carries both filters. */}
 
       {/* Concierge strip */}
       <section className="mx-auto w-full max-w-[1440px] px-4 py-14 text-center sm:px-6">

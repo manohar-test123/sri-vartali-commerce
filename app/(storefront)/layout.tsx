@@ -8,6 +8,7 @@ import {
 } from "@/components/storefront/contact-dock";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SplashScreen } from "@/components/storefront/splash-screen";
+import { WishlistSync } from "@/components/storefront/wishlist-sync";
 import { getCartCount } from "@/lib/cart/queries";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveStoreContact } from "@/lib/store/contact";
@@ -67,6 +68,9 @@ export default async function StorefrontLayout({
         <style>{`.splash-overlay{display:none !important}`}</style>
       </noscript>
       <SplashScreen />
+      {/* Phase 31: bridges the signed-in user's DB wishlist to/from
+          localStorage — renders nothing, just syncs data. */}
+      <WishlistSync />
       {!supabaseConfigured ? (
         <p
           role="alert"

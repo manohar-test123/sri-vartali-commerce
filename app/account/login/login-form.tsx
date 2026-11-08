@@ -21,7 +21,7 @@ const inputClass =
  */
 export function LoginForm() {
   const params = useSearchParams();
-  const next = params.get("next") ?? "/account";
+  const next = params.get("next") ?? "/";
   const linkError = params.get("error");
   const [pwState, pwFormAction, pwPending] = useActionState(
     passwordSignIn,

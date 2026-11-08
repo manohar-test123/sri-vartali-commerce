@@ -199,8 +199,82 @@ async function cartItemLines(): Promise<QuoteRequestLine[]> {
     .order("created_at");
   if (error) throw new Error(`cart_items: ${error.message}`);
 
+  // Phase 31: if this browser's cart is empty but the user is signed in
+  // with a previous cart (from another device), restore its items.
+  if ((items ?? []).length === 0) {
+    const restored = await restoreUserCart(admin, cart.id);
+    if (restored.length > 0) return restored;
+  }
+
   return ((items ?? []) as Array<{ variant_id: string; quantity: number }>).map(
     (i) => ({
+      variantId: i.variant_id,
+      quantity: i.quantity,
+    }),
+  );
+}
+
+/**
+ * Phase 31: when a signed-in user's browser cart is empty, check if they
+ * have a cart from a previous session (keyed by user_id) and copy its
+ * items over. Returns the restored lines (empty if none found).
+ */
+async function restoreUserCart(
+  admin: ReturnType<typeof createAdminClient>,
+  currentCartId: string,
+): Promise<QuoteRequestLine[]> {
+  const { getSession } = await import("@/lib/auth/session");
+  const session = await getSession();
+  if (session.status !== "authenticated") return [];
+
+  const { data: previousCart } = await admin
+    .from("carts")
+    .select("id, cart_items(variant_id, quantity)")
+    .eq("user_id", session.user.id)
+    .neq("id", currentCartId)
+    .limit(1)
+    .maybeSingle();
+
+  if (!previousCart?.cart_items?.length) return [];
+
+  // Copy items into the current cart
+  for (const item of previousCart.cart_items) {
+    const { data: existing } = await admin
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("cart_id", currentCartId)
+      .eq("variant_id", item.variant_id)
+      .maybeSingle();
+
+    if (existing) {
+      await admin
+        .from("cart_items")
+        .update({ quantity: existing.quantity + item.quantity })
+        .eq("id", existing.id);
+    } else {
+      const { data: srcItem } = await admin
+        .from("cart_items")
+        .select("product_id")
+        .eq("cart_id", previousCart.id)
+        .eq("variant_id", item.variant_id)
+        .maybeSingle();
+      await admin.from("cart_items").insert({
+        cart_id: currentCartId,
+        variant_id: item.variant_id,
+        product_id: srcItem?.product_id,
+        quantity: item.quantity,
+      });
+    }
+  }
+
+  // Link the current cart to the user (so the next device finds it too)
+  await admin
+    .from("carts")
+    .update({ user_id: session.user.id })
+    .eq("id", currentCartId);
+
+  return previousCart.cart_items.map(
+    (i: { variant_id: string; quantity: number }) => ({
       variantId: i.variant_id,
       quantity: i.quantity,
     }),

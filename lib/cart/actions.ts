@@ -9,6 +9,7 @@
 
 import { ensureCartToken } from "@/lib/cart/cookies";
 import { createAdminClient } from "@/lib/db/admin";
+import { getSession } from "@/lib/auth/session";
 
 export type CartActionResult =
   | { ok: true; message: string | null }
@@ -92,15 +93,37 @@ async function cartIdForToken(): Promise<string> {
     .select("id")
     .eq("cart_token", token)
     .maybeSingle();
-  if (cart) return cart.id;
 
-  const { data: created, error } = await admin
-    .from("carts")
-    .insert({ cart_token: token })
-    .select("id")
-    .single();
-  if (error || !created) throw new Error(`carts insert: ${error?.message}`);
-  return created.id;
+  let cartId: string;
+  if (cart) {
+    cartId = cart.id;
+  } else {
+    const { data: created, error } = await admin
+      .from("carts")
+      .insert({ cart_token: token })
+      .select("id")
+      .single();
+    if (error || !created) throw new Error(`carts insert: ${error?.message}`);
+    cartId = created.id;
+  }
+
+  // Phase 31: link the cart to the signed-in user so it can be restored
+  // on any device after login. Cheap (one UPDATE, only when user_id is
+  // still null) and runs on every cart mutation, not just login.
+  try {
+    const session = await getSession();
+    if (session.status === "authenticated") {
+      await admin
+        .from("carts")
+        .update({ user_id: session.user.id })
+        .eq("id", cartId)
+        .is("user_id", null);
+    }
+  } catch {
+    // Best-effort — the cart mutation itself must never fail on this.
+  }
+
+  return cartId;
 }
 
 /** §18 add: increments when the variant is already in the cart. */

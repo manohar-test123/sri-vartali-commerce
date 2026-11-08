@@ -131,6 +131,15 @@ export function getWishlistSnapshot(): WishlistEntry[] {
   return wishlistsSnapshot();
 }
 
+/**
+ * Phase 31: replace the entire wishlist (used by the DB→localStorage
+ * sync — restores a signed-in user's saved items on any device).
+ * Dispatches the change event so every subscribed component updates.
+ */
+export function writeWishlist(entries: WishlistEntry[]): void {
+  write(WISHLIST_KEY, entries);
+}
+
 export function inWishlistSnapshot(productId: string): boolean {
   return wishlistsSnapshot().some((e) => e.id === productId);
 }

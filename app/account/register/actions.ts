@@ -84,7 +84,7 @@ export async function createAccount(
   // establishes the session immediately and the user lands signed in.
   // The email-notice branch remains only as a fallback for projects
   // that re-enable confirmation.
-  if (data.session) redirect("/account");
+  if (data.session) redirect("/");
 
   return {
     notice: `Account created. Sign in with your email and password.`,

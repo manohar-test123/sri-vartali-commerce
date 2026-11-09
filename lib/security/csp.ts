@@ -51,8 +51,9 @@ export function buildCsp({ isDev }: CspOptions): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co",
     "font-src 'self' data:",
-    // ws: covers the next-dev HMR socket (dev only — localhost).
-    `connect-src 'self' https://*.supabase.co https://api.cloudinary.com${
+    // wss://*.supabase.co: the client dashboard's realtime order updates
+    // (Phase 12 §39). ws: covers the next-dev HMR socket (dev only).
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudinary.com${
       isDev ? " ws:" : ""
     }`,
     "worker-src 'self' blob:",

@@ -11,10 +11,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "WhatsApp integration · Super admin" };
 
 /**
- * §9 WhatsApp status surface — set / not set only, never values (§46).
- * Wiring itself (phone id, token, app secret, webhook subscription) is
- * deliberately deferred by the owner; this page shows exactly where it
- * stands without nagging.
+ * §9 WhatsApp status surface (Phase 33 rework) — shows the ACTUAL state:
+ * the store runs on wa.me deep links (no credentials needed) for all
+ * ordering; the Meta Cloud API credentials below are only needed for
+ * automated outbound messages and inbound webhook events, which is a
+ * separate optional layer the owner hasn't wired.
  */
 export default async function AdminWhatsappPage() {
   const session = await getSession();
@@ -33,67 +34,83 @@ export default async function AdminWhatsappPage() {
   }
 
   const settings = await getStoreSettings();
-  const vars = [
+  const storeNumberSet = Boolean(settings?.whatsapp_store_number);
+  const cloudVars = [
     { label: "WHATSAPP_PHONE_NUMBER_ID", ok: Boolean(env.whatsapp.phoneNumberId) },
     { label: "WHATSAPP_ACCESS_TOKEN", ok: Boolean(env.whatsapp.accessToken) },
     { label: "WHATSAPP_VERIFY_TOKEN", ok: Boolean(env.whatsapp.verifyToken) },
     { label: "WHATSAPP_APP_SECRET", ok: Boolean(env.whatsapp.appSecret) },
   ];
-  const storeRows = [
-    { label: "Store WhatsApp number (§27 target)", ok: Boolean(settings?.whatsapp_store_number) },
-  ];
-
-  const allSet = vars.every((v) => v.ok);
 
   return (
     <AdminShell
       area="Integrations"
       title="WhatsApp"
-      intro="Status only — values are never displayed. Until the owner wires Meta credentials, outbound sends log NOT_CONFIGURED and the dashboard honestly shows “Tracking missing”."
+      intro="The store's ordering runs entirely through wa.me deep links to the configured business number — no API credentials are needed for this. The Meta Cloud API below is an optional automation layer."
     >
-      <section className="rounded-2xl border border-wine-900/15 bg-white p-5">
+      {/* Active ordering channel */}
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
         <h2 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
-          Environment variables
+          Active · WhatsApp deep-link ordering
         </h2>
         <ul className="mt-3 space-y-2 text-sm">
-          {[...vars, ...storeRows].map((item) => (
+          <li className="flex items-center gap-2">
+            <span aria-hidden className="inline-block h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+            <code className="font-mono text-xs text-wine-900/80">wa.me deep links</code>
+            <span className="ml-auto text-xs text-emerald-700">active — all ordering flows use this</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className={`inline-block h-2 w-2 shrink-0 rounded-full ${storeNumberSet ? "bg-emerald-500" : "bg-amber-400"}`}
+            />
+            <code className="font-mono text-xs text-wine-900/80">Store WhatsApp number</code>
+            <span className="ml-auto text-xs text-wine-900/40">
+              {storeNumberSet ? "set (database)" : "not set — configure in Client Dashboard → Settings"}
+            </span>
+          </li>
+        </ul>
+        <p className="mt-3 text-xs leading-5 text-wine-900/50">
+          Buy via WhatsApp (cart, product pages, contact dock) opens the customer&apos;s
+          WhatsApp with the full order prefilled — no server-side API needed.
+        </p>
+      </section>
+
+      {/* Optional automation layer */}
+      <section className="mt-6 rounded-2xl border border-wine-900/15 bg-white p-5">
+        <h2 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+          Optional · Meta Cloud API (automation)
+        </h2>
+        <ul className="mt-3 space-y-2 text-sm">
+          {cloudVars.map((item) => (
             <li key={item.label} className="flex items-center gap-2">
               <span
                 aria-hidden
-                className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                  item.ok ? "bg-emerald-500" : "bg-amber-400"
-                }`}
+                className={`inline-block h-2 w-2 shrink-0 rounded-full ${item.ok ? "bg-emerald-500" : "bg-wine-900/20"}`}
               />
               <code className="font-mono text-xs text-wine-900/80">{item.label}</code>
               <span className="ml-auto text-xs text-wine-900/40">
-                {item.ok ? "set" : "not set"}
+                {item.ok ? "set" : "not needed for current flow"}
               </span>
             </li>
           ))}
         </ul>
         <p className="mt-4 text-xs leading-5 text-wine-900/50">
-          {allSet
-            ? "All Meta credentials present — the webhook also needs its subscription in the Meta dashboard to receive events."
-            : "Amber env items are Vercel project settings (owner action); wiring is deliberately deferred."}{" "}
-          The inbound webhook URL is{" "}
+          These enable automated order acknowledgements, payment instructions, and
+          tracking notifications. Obtain from{" "}
+          <a
+            href="https://developers.facebook.com/apps"
+            className="underline decoration-gold-400 underline-offset-2"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Meta for Developers
+          </a>{" "}
+          (Business account → WhatsApp → API setup). The webhook URL is{" "}
           <code className="rounded bg-gold-50 px-1 font-mono text-xs">
             {env.siteUrl.replace(/\/$/, "")}/api/whatsapp/webhook
           </code>
           .
-        </p>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-wine-900/15 bg-white p-5">
-        <h2 className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
-          Behaviour while unwired
-        </h2>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-6 text-wine-900/70">
-          <li>Outbound sends are attempted, logged, and marked NOT_CONFIGURED — nothing is silently dropped (§43).</li>
-          <li>Inbound webhook signature verification is built; without a subscription no events arrive (§44).</li>
-          <li>“PAID” from a customer only ever sets CUSTOMER_CLAIMS_PAID — verification stays manual (rule 15).</li>
-        </ul>
-        <p className="mt-3 text-xs text-wine-900/50">
-          Message-level evidence: <a href="/admin/logs" className="underline decoration-gold-400 underline-offset-4">Message log</a>.
         </p>
       </section>
     </AdminShell>

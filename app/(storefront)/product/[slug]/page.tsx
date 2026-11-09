@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AddToCart } from "@/components/storefront/add-to-cart";
-import { ProductCard, cardDataFromSummary } from "@/components/storefront/product-card";
+import { ProductCard } from "@/components/storefront/product-card";
+import { cardDataFromSummary } from "@/components/storefront/product-card-data";
 import { PinChecker } from "@/components/storefront/pin-checker";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { RecentlyViewed } from "@/components/storefront/recently-viewed";

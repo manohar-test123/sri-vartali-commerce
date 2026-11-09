@@ -1,11 +1,14 @@
+"use client";
+
 /**
- * Public product card (spec §12): primary image with secondary hover image,
- * name, category cue, color, price/MRP/discount, rating, wishlist heart,
- * New badge, low-stock and sold-out states. Presentational — usable from
- * server pages and the client wishlist page alike.
+ * Public product card (spec §12; Phase 33 rework): image gallery with
+ * pagination dots and swipe, smooth 200ms transitions, hover auto-advance,
+ * wishlist toggle, badges. Client component — the data mapping lives in
+ * product-card-data.ts (shared with server pages).
  */
 
 import Link from "next/link";
+import { useRef, useState } from "react";
 
 import { WishlistToggle } from "@/components/storefront/wishlist-toggle";
 import {
@@ -13,48 +16,10 @@ import {
   responsiveImageSrcSet,
 } from "@/lib/media/optimized-url";
 import { discountPercent, formatPaise } from "@/lib/catalog/money";
-import type { Availability } from "@/lib/catalog/types";
-import type { StoreProductSummary } from "@/lib/storefront/types";
+import type { ProductCardData } from "@/components/storefront/product-card-data";
 
-export interface ProductCardData {
-  id: string;
-  slug: string;
-  name: string;
-  productCode: string;
-  categoryName: string | null;
-  pricePaise: number;
-  mrpPaise: number | null;
-  imageUrl: string | null;
-  imageAlt: string | null;
-  hoverImageUrl: string | null;
-  colorLabel: string | null;
-  materialLabel: string | null;
-  availability: Availability;
-  lowStock: boolean;
-  isNew: boolean;
-  rating: { average: number; count: number } | null;
-}
-
-export function cardDataFromSummary(p: StoreProductSummary): ProductCardData {
-  return {
-    id: p.id,
-    slug: p.slug,
-    name: p.name,
-    productCode: p.productCode,
-    categoryName: p.categoryParentName ?? p.categoryName,
-    pricePaise: p.pricePaise,
-    mrpPaise: p.mrpPaise,
-    imageUrl: p.images[0]?.url ?? null,
-    imageAlt: p.images[0]?.alt || p.name,
-    hoverImageUrl: p.images[1]?.url ?? null,
-    colorLabel: p.colorLabel,
-    materialLabel: p.materialLabel,
-    availability: p.availability,
-    lowStock: p.lowStock,
-    isNew: p.isNew,
-    rating: p.rating,
-  };
-}
+export { cardDataFromSummary } from "@/components/storefront/product-card-data";
+export type { ProductCardData } from "@/components/storefront/product-card-data";
 
 function Stars({ average }: { average: number }) {
   return (
@@ -65,62 +30,133 @@ function Stars({ average }: { average: number }) {
   );
 }
 
+const SIZES = "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
+
 export function ProductCard({
   product,
   eager = false,
 }: {
   product: ProductCardData;
-  /** First card in the first grid: the LCP candidate — fetch it first. */
   eager?: boolean;
 }) {
   const discount = discountPercent(product.mrpPaise, product.pricePaise);
   const soldOut = product.availability === "SOLD_OUT";
-  // §47 responsive sizes: grid is 2-up mobile / 3-up sm / 4-up lg (see
-  // ProductGrid) — each viewport fetches only the derivative it lays out.
-  const src = optimizedImageUrl(product.imageUrl, { width: 600 });
-  const srcSet = responsiveImageSrcSet(product.imageUrl, [400, 600, 800]);
-  const sizes = "(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
+  const images = product.imageUrls;
+  const hasGallery = images.length > 1;
+
+  const [active, setActive] = useState(0);
+  const touchStart = useRef<number | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Desktop hover: auto-advance through images every 1.2s (subtle preview)
+  function onHoverStart() {
+    if (!hasGallery) return;
+    hoverTimer.current = setInterval(() => {
+      setActive((i) => (i + 1) % images.length);
+    }, 1200);
+  }
+
+  function onHoverEnd() {
+    if (hoverTimer.current) {
+      clearInterval(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setActive(0); // snap back to primary
+  }
+
+  // Mobile swipe: track touch delta, threshold 40px
+  function onTouchStart(e: React.TouchEvent) {
+    touchStart.current = e.touches[0].clientX;
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStart.current === null || !hasGallery) return;
+    const delta = e.changedTouches[0].clientX - touchStart.current;
+    touchStart.current = null;
+    if (Math.abs(delta) < 40) return;
+    if (delta < 0) setActive((i) => Math.min(i + 1, images.length - 1));
+    else setActive((i) => Math.max(i - 1, 0));
+  }
 
   return (
     <article className="group relative flex flex-col">
-      <Link
-        href={`/product/${product.slug}`}
-        className="relative block aspect-[3/4] overflow-hidden rounded-xl bg-wine-900/5"
-        aria-label={product.name}
+      <div
+        className="relative aspect-[3/4] overflow-hidden rounded-xl bg-wine-900/5"
+        onMouseEnter={onHoverStart}
+        onMouseLeave={onHoverEnd}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
       >
-        {src ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* image stack — only the active one is visible (200ms fade) */}
+        {images.map((url, i) => {
+          const u = optimizedImageUrl(url, { width: 600 });
+          if (!u) return null;
+          return (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={src ?? undefined}
-              srcSet={srcSet ?? undefined}
-              sizes={sizes}
-              alt={product.imageAlt || product.name}
-              loading={eager ? "eager" : "lazy"}
+              key={`${url}-${i}`}
+              src={u}
+              srcSet={responsiveImageSrcSet(url, [400, 600, 800]) ?? undefined}
+              sizes={SIZES}
+              alt={i === 0 ? product.imageAlt || product.name : ""}
+              loading={i === 0 && eager ? "eager" : "lazy"}
               decoding="async"
-              className={`h-full w-full object-cover transition-opacity duration-300 ${
-                product.hoverImageUrl ? "group-hover:opacity-0" : ""
-              } ${soldOut ? "opacity-70 saturate-50" : ""}`}
+              draggable={false}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ease-out ${
+                i === active ? "opacity-100" : "opacity-0"
+              } ${soldOut ? "saturate-50" : ""}`}
             />
-            {product.hoverImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={optimizedImageUrl(product.hoverImageUrl, { width: 600 })!}
-                srcSet={responsiveImageSrcSet(product.hoverImageUrl, [400, 600, 800]) ?? undefined}
-                sizes={sizes}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              />
-            ) : null}
-          </>) : (
+          );
+        })}
+
+        {images.length === 0 ? (
           <span className="flex h-full items-center justify-center text-xs text-wine-900/40">
             Coming soon
           </span>
-        )}
+        ) : null}
 
-        <span className="absolute left-2 top-2 flex flex-col gap-1">
+        {/* product link — covers the image but not the dots */}
+        <Link
+          href={`/product/${product.slug}`}
+          className="absolute inset-0 bottom-8"
+          aria-label={product.name}
+        />
+
+        {/* pagination dots — visible when multiple images; clickable/tappable */}
+        {hasGallery ? (
+          <div
+            className="absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5"
+            role="tablist"
+            aria-label={`${product.name} images`}
+          >
+            {images.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === active}
+                aria-label={`Image ${i + 1} of ${images.length}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setActive(i);
+                  if (hoverTimer.current) {
+                    clearInterval(hoverTimer.current);
+                    hoverTimer.current = null;
+                  }
+                }}
+                className={`h-1.5 rounded-full transition-all duration-200 ${
+                  i === active
+                    ? "w-4 bg-wine-900"
+                    : "w-1.5 bg-wine-900/30 hover:bg-wine-900/60"
+                }`}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        {/* badges */}
+        <span className="absolute left-2 top-2 z-10 flex flex-col gap-1">
           {product.isNew ? (
             <span className="rounded-full bg-wine-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ivory-50">
               New
@@ -136,9 +172,9 @@ export function ProductCard({
             </span>
           ) : null}
         </span>
-      </Link>
+      </div>
 
-      <div className="absolute right-2 top-2">
+      <div className="absolute right-2 top-2 z-10">
         <WishlistToggle
           snapshot={{
             id: product.id,
@@ -147,7 +183,7 @@ export function ProductCard({
             productCode: product.productCode,
             categoryName: product.categoryName,
             pricePaise: product.pricePaise,
-            imageUrl: product.imageUrl,
+            imageUrl: images[0] ?? null,
             imageAlt: product.imageAlt,
           }}
         />

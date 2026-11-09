@@ -1,54 +1,15 @@
-import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-
-import { CheckoutForm } from "@/components/storefront/checkout-form";
-import { getCheckoutView } from "@/lib/cart/queries";
-
-/**
- * /checkout (spec §20–§22): contact + address with §21 PIN validation,
- * order summary, and a server-side review that locks verified totals.
- * "Continue to WhatsApp" then places the order (§22 steps 10–16, Phase 6)
- * and hands off to the prefilled §27 WhatsApp message.
- */
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Checkout · Sri Vartali",
-};
+export const metadata = { title: "Checkout · Sri Vartali" };
 
-export default async function CheckoutPage() {
-  const view = await getCheckoutView();
-
-  if (view.quote.lines.length === 0) {
-    redirect("/cart");
-  }
-
-  const lineImages: Record<string, string | null> = {};
-  for (const m of view.meta) lineImages[m.variantId] = m.imageUrl;
-
-  return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6">
-      <nav aria-label="Breadcrumb" className="mb-4 text-xs text-wine-900/50">
-        <Link href="/cart" className="hover:text-wine-900">
-          ← Back to cart
-        </Link>
-      </nav>
-      <h1 className="font-serif text-3xl text-wine-900">Checkout</h1>
-      <p className="mt-2 max-w-2xl text-sm text-wine-900/60">
-        Where should your order go? We verify stock and totals on the server
-        before anything is placed.
-      </p>
-
-      <div className="mt-8">
-        <CheckoutForm
-          lines={view.quote.lines}
-          totals={view.quote.totals}
-          issues={view.quote.issues}
-          lineImages={lineImages}
-        />
-      </div>
-    </div>
-  );
+/**
+ * /checkout (Phase 33): WhatsApp is the only ordering channel — the
+ * conventional checkout (address form, payment verification pipeline)
+ * was removed per owner direction. This route redirects to /cart where
+ * the Buy via WhatsApp button carries the full prefilled order.
+ */
+export default function CheckoutPage() {
+  redirect("/cart");
 }

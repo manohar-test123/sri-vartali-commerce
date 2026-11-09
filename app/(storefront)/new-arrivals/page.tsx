@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ProductCard, cardDataFromSummary } from "@/components/storefront/product-card";
+import { ProductCard } from "@/components/storefront/product-card";
+import { cardDataFromSummary } from "@/components/storefront/product-card-data";
 import { listPublishedProducts } from "@/lib/storefront/queries";
 
 /** /new-arrivals (§7): everything by published_at, newest first. */

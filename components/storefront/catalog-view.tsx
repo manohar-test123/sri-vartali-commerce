@@ -10,7 +10,7 @@ import Link from "next/link";
 import { FiltersPanel } from "@/components/storefront/filters-panel";
 import { FiltersSheet } from "@/components/storefront/filters-sheet";
 import { ProductGrid } from "@/components/storefront/product-grid";
-import { cardDataFromSummary } from "@/components/storefront/product-card";
+import { cardDataFromSummary } from "@/components/storefront/product-card-data";
 import {
   buildQuery,
   categoryScope,

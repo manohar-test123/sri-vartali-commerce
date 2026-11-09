@@ -149,8 +149,8 @@ export default async function CartPage() {
             </ul>
           ) : null}
           <p className="mt-3 text-[11px] leading-4 text-wine-900/50">
-            Estimate from live prices — your order is verified and totalled
-            again at checkout before anything is placed.
+            Estimate from live prices — confirmed with you on WhatsApp
+            before anything is placed.
           </p>
           {buyViaWhatsAppUrl ? (
             <>
@@ -158,7 +158,7 @@ export default async function CartPage() {
                 href={buyViaWhatsAppUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 flex items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 text-sm font-semibold text-white transition hover:brightness-95"
+                className="mt-4 flex items-center justify-center gap-2 rounded-full bg-[#25D366] py-3.5 text-sm font-semibold text-white transition hover:brightness-95"
               >
                 <WhatsAppIcon className="h-5 w-5" />
                 Buy via WhatsApp
@@ -169,16 +169,6 @@ export default async function CartPage() {
               </p>
             </>
           ) : null}
-          <Link
-            href="/checkout"
-            className={
-              buyViaWhatsAppUrl
-                ? "mt-3 block rounded-full border border-wine-900/20 py-2.5 text-center text-sm font-medium text-wine-900 transition-colors hover:border-wine-900/40"
-                : "mt-4 block rounded-full bg-wine-900 py-2.5 text-center text-sm font-medium text-ivory-50 transition-colors hover:bg-wine-800"
-            }
-          >
-            Proceed to checkout
-          </Link>
         </aside>
       </div>
     </div>

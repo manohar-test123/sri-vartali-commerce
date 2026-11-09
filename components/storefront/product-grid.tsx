@@ -5,7 +5,8 @@
 
 import Link from "next/link";
 
-import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
+import { ProductCard } from "@/components/storefront/product-card";
+import type { ProductCardData } from "@/components/storefront/product-card-data";
 
 export function ProductGrid({ products }: { products: ProductCardData[] }) {
   if (products.length === 0) {

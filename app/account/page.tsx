@@ -10,7 +10,12 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Your account · Sri Vartali" };
 
-/** Account hub (spec §7 /account): identity + the self-service routes. */
+/**
+ * Account page (spec §7 /account). Phase 32: simplified per owner
+ * direction — the normal user's account is a single Profile card (name,
+ * email, phone) with sign-out. Orders, addresses and their notification
+ * are removed; staff dashboard links remain for client/super-admin roles.
+ */
 export default async function AccountPage() {
   const session = await getSession();
 
@@ -36,8 +41,8 @@ export default async function AccountPage() {
           You are signed out.{" "}
           <Link href="/account/login" className="underline decoration-gold-400 underline-offset-2">
             Sign in
-          </Link>{" "}
-          to see your orders, saved addresses and profile.
+          </Link>
+          .
         </p>
       </div>
     );
@@ -48,87 +53,76 @@ export default async function AccountPage() {
   const greeting = customer?.name ?? user.fullName ?? user.email ?? "there";
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6">
-      <p className="text-xs uppercase tracking-[0.2em] text-gold-600">
+    <div className="mx-auto w-full max-w-lg px-4 py-16 sm:px-6">
+      <p className="text-center text-xs uppercase tracking-[0.2em] text-gold-600">
         Sri Vartali Sarees
       </p>
-      <h1 className="mt-2 font-serif text-3xl text-wine-900">
+      <h1 className="mt-2 text-center font-serif text-3xl text-wine-900">
         Hello, {greeting}
       </h1>
-      <p className="mt-2 text-sm text-wine-900/60">
-        {user.email}
-        {customer ? ` · ${customer.phone}` : ""}
-      </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Link
-          href="/account/orders"
-          className="group rounded-lg border border-wine-900/20 bg-white p-5 transition-colors hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
-        >
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Orders</p>
-          <h2 className="mt-1 font-serif text-lg text-wine-900">Your orders</h2>
-          <p className="mt-1.5 text-sm text-wine-900/60">
-            Every order linked to this account, with live status and tracking.
-          </p>
-        </Link>
-        <Link
-          href="/account/addresses"
-          className="group rounded-lg border border-wine-900/20 bg-white p-5 transition-colors hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
-        >
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Addresses</p>
-          <h2 className="mt-1 font-serif text-lg text-wine-900">Address book</h2>
-          <p className="mt-1.5 text-sm text-wine-900/60">
-            Save delivery addresses once, reuse them at checkout.
-          </p>
-        </Link>
+      {/* Profile card — the single section on the normal user's account */}
+      <div className="mt-8 rounded-2xl border border-wine-900/15 bg-white/80 p-6 sm:p-8">
+        <div className="space-y-5">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+              Name
+            </p>
+            <p className="mt-1 font-serif text-lg text-wine-900">
+              {customer?.name ?? user.fullName ?? "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+              Email
+            </p>
+            <p className="mt-1 text-sm text-wine-900">{user.email}</p>
+          </div>
+          {customer?.phone ? (
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-wine-900/50">
+                Phone
+              </p>
+              <p className="mt-1 text-sm text-wine-900">{customer.phone}</p>
+            </div>
+          ) : null}
+        </div>
+
         <Link
           href="/account/profile"
-          className="group rounded-lg border border-wine-900/20 bg-white p-5 transition-colors hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
+          className="mt-6 inline-flex h-10 items-center justify-center rounded-full border border-wine-900/20 px-5 text-sm font-medium text-wine-900 transition-colors hover:border-wine-900/40"
         >
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-600">Profile</p>
-          <h2 className="mt-1 font-serif text-lg text-wine-900">Profile</h2>
-          <p className="mt-1.5 text-sm text-wine-900/60">
-            Your name and the phone number you order with.
-          </p>
+          Edit profile
         </Link>
       </div>
 
-      {!customer ? (
-        <p className="mt-6 rounded-xl border border-dashed border-wine-900/25 px-4 py-4 text-sm leading-6 text-wine-900/60">
-          Orders placed by phone aren&apos;t linked yet — add your phone number
-          in{" "}
-          <Link href="/account/profile" className="underline decoration-gold-400 underline-offset-2">
-            Profile
-          </Link>{" "}
-          and they&apos;ll appear under{" "}
-          <Link href="/account/orders" className="underline decoration-gold-400 underline-offset-2">
-            Your orders
-          </Link>
-          .
-        </p>
+      {/* Staff shortcuts (visible only to client/super-admin roles) */}
+      {canAccessClientArea(user.role) || canAccessAdminArea(user.role) ? (
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {canAccessClientArea(user.role) ? (
+            <Link
+              href="/client"
+              className="inline-flex h-11 items-center justify-center rounded-md border border-wine-900/20 px-5 text-sm font-medium text-wine-900 hover:bg-ivory-200"
+            >
+              Client dashboard
+            </Link>
+          ) : null}
+          {canAccessAdminArea(user.role) ? (
+            <Link
+              href="/admin"
+              className="inline-flex h-11 items-center justify-center rounded-md border border-wine-900/20 px-5 text-sm font-medium text-wine-900 hover:bg-ivory-200"
+            >
+              Super admin
+            </Link>
+          ) : null}
+        </div>
       ) : null}
 
-      <div className="mt-10 flex flex-wrap gap-3">
-        {canAccessClientArea(user.role) ? (
-          <Link
-            href="/client"
-            className="inline-flex h-11 items-center justify-center rounded-md border border-wine-900/20 px-5 text-sm font-medium text-wine-900 hover:bg-ivory-200"
-          >
-            Client dashboard
-          </Link>
-        ) : null}
-        {canAccessAdminArea(user.role) ? (
-          <Link
-            href="/admin"
-            className="inline-flex h-11 items-center justify-center rounded-md border border-wine-900/20 px-5 text-sm font-medium text-wine-900 hover:bg-ivory-200"
-          >
-            Super admin
-          </Link>
-        ) : null}
+      <div className="mt-8 text-center">
         <form action={signOut}>
           <button
             type="submit"
-            className="inline-flex h-11 items-center justify-center rounded-md bg-wine-800 px-5 text-sm font-medium text-ivory-50 hover:bg-wine-700"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-wine-800 px-8 text-sm font-medium text-ivory-50 hover:bg-wine-700"
           >
             Sign out
           </button>
